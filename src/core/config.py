@@ -11,12 +11,11 @@ POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT")
 
-# URL.create automatically and safely escapes any special characters
-DATABASE_URL = str(URL.create(
+DATABASE_URL = URL.create(
     drivername="postgresql+asyncpg",
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
     host=POSTGRES_HOST,
     port=POSTGRES_PORT,
     database=POSTGRES_DB
-))
+).render_as_string(hide_password=False)
