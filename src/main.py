@@ -14,16 +14,14 @@ app = FastAPI()
 
 app.include_router(short_url_router)
 
-# Настраиваем CORS
-# В продакшене фронт и бэк работают на одном домене (через Nginx),
-# поэтому CORS нужен восновном только для локальной разработки.
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Локальный Vite фронтенд
-        "http://localhost:8000",  # Swagger/Локальный бэкенд
-        "https://шорти.рф",       # Продакшен домен (на всякий случай)
-        "https://xn--h1algi1a.xn--p1ai" # Punycode продакшен домена
+        "http://localhost:5173",  # Local Vite frontend
+        "http://localhost:8000",  # Swagger/Local backend
+        "https://шорти.рф",       # Production domain (just in case)
+        "https://xn--h1algi1a.xn--p1ai" # Punycode production domain
     ],
     allow_credentials=True,
     allow_methods=["*"],
