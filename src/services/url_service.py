@@ -63,11 +63,11 @@ class UrlService:
             long_url=url,
         )
 
-        async with self._uow:
-            try:
+        try:
+            async with self._uow:
                 return await self._repo.add(short_url)
-            except Exception as e:
-                raise ShortUrlGenerationException(e)
+        except Exception as e:
+            raise ShortUrlGenerationException(e)
 
     async def get_original_url(self, slug: str) -> ShortUrl:
         """
