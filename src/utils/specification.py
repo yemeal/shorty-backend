@@ -1,4 +1,4 @@
-from sqlalchemy import Select
+from sqlalchemy.sql import Select
 
 
 class Specification[ModelType]:

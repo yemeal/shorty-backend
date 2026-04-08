@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from dishka import FromDishka
+from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Body, HTTPException
 from starlette import status
 
@@ -22,12 +23,13 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     response_model=ShortUrlResponse,
 )
+@inject
 async def create_short_url(
     payload: Annotated[
         ShortUrlCreate,
         Body(embed=True),
     ],
-        url_service: FromDishka[UrlService],
+    url_service: FromDishka[UrlService],
 ):
     try:
         short_url = await url_service.create_short_url(payload.long_url)

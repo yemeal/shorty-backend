@@ -3,7 +3,8 @@ from typing import Sequence
 
 from sqlalchemy import select
 
-from src.utils import AsyncSessionProtocol, Specification
+from src.utils.session import AsyncSessionProtocol
+from src.utils.specification import Specification
 
 
 class AbstractAsyncRepository[ModelType](ABC):
