@@ -17,6 +17,7 @@ router = APIRouter(
     tags=["short_url"],
 )
 
+import traceback
 
 @router.post(
     "/",
@@ -33,10 +34,23 @@ async def create_short_url(
 ):
     try:
         short_url = await url_service.create_short_url(payload.long_url)
-    except RetriesAmountExceeded:
+    # except RetriesAmountExceeded:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail="We had problem generating short url, try again later.",
+    #     )
+    # temp
+    except Exception as exc:
+
+        print(traceback.format_exc())
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="We had problem generating short url, try again later.",
+            detail={
+                "error_type": type(exc).__name__,
+                "error_message": str(exc),
+                "traceback": traceback.format_exc()
+            }
         )
 
     return short_url
