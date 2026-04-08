@@ -24,6 +24,11 @@ class SQLAlchemyDatabaseProvider(Provider):
             url=DATABASE_URL,
             pool_size=20,
             max_overflow=30,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            connect_args={
+                "command_timeout": 60,
+            },
         )
 
     @provide(scope=Scope.APP)
