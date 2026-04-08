@@ -26,7 +26,7 @@ class AbstractAsyncRepository[ModelType](ABC):
 
     @abstractmethod
     async def find(
-            self, specification: Specification[ModelType]
+        self, specification: Specification[ModelType]
     ) -> Sequence[ModelType] | None:
         raise NotImplementedError
 
@@ -35,7 +35,7 @@ class SQLAlchemyAsyncRepository[ModelType](
     AbstractAsyncRepository[ModelType]
 ):
     def __init__(
-            self, session: AsyncSessionProtocol, model_class: type[ModelType]
+        self, session: AsyncSessionProtocol, model_class: type[ModelType]
     ) -> None:
         self.session = session
         self.model_class = model_class
@@ -58,10 +58,10 @@ class SQLAlchemyAsyncRepository[ModelType](
         return entity
 
     async def find(
-            self, specification: Specification[ModelType]
+        self, specification: Specification[ModelType]
     ) -> Sequence[ModelType] | None:
         stmt = select(self.model_class)
         stmt = specification.apply(stmt)
 
         result = await self.session.execute(stmt)
-        return await result.scalars().all()
+        return result.scalars().all()
