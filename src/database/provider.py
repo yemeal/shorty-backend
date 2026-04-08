@@ -10,14 +10,12 @@ from sqlalchemy.ext.asyncio import (
 
 from src.core.config import DATABASE_URL
 from src.models import ShortUrl
-from src.services.url_service import UrlService
+from src.services.url_service import UrlService, AbstractUrlService
 from src.utils import AsyncUOW, AbstractAsyncUOW
 from src.utils import SQLAlchemyAsyncRepository, AbstractAsyncRepository
 
-# TODO Абстракция провайдера
 
-
-class SQLAlchemyDatabaseProvider(Provider):
+class DatabaseProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_engine(self) -> AsyncEngine:
         return create_async_engine(
@@ -33,9 +31,13 @@ class SQLAlchemyDatabaseProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_sessionmaker(
-        self, engine: AsyncEngine
+        self,
+        engine: AsyncEngine,
     ) -> async_sessionmaker[AsyncSession]:
-        return async_sessionmaker(bind=engine, expire_on_commit=False)
+        return async_sessionmaker(
+            bind=engine,
+            expire_on_commit=False,
+        )
 
     @provide(scope=Scope.REQUEST)
     async def provide_session(
@@ -44,6 +46,8 @@ class SQLAlchemyDatabaseProvider(Provider):
         async with sessionmaker() as session:
             yield session
 
+
+class ServicesProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def provide_uow(self, session: AsyncSession) -> AbstractAsyncUOW:
         return AsyncUOW[AsyncSession](session)
@@ -59,5 +63,5 @@ class SQLAlchemyDatabaseProvider(Provider):
         self,
         uow: AbstractAsyncUOW,
         repo: AbstractAsyncRepository[ShortUrl],
-    ) -> UrlService:
+    ) -> AbstractUrlService:
         return UrlService(uow=uow, repo=repo)

@@ -10,14 +10,13 @@ from src.schemas.short_url import (
     ShortUrlCreate,
     ShortUrlResponse,
 )
-from src.services.url_service import UrlService
+from src.services.url_service import AbstractUrlService
 
 router = APIRouter(
     prefix="/short_url",
     tags=["short_url"],
 )
 
-import traceback
 
 @router.post(
     "/",
@@ -30,7 +29,7 @@ async def create_short_url(
         ShortUrlCreate,
         Body(embed=True),
     ],
-    url_service: FromDishka[UrlService],
+    url_service: FromDishka[AbstractUrlService],
 ):
     try:
         short_url = await url_service.create_short_url(str(payload.long_url))

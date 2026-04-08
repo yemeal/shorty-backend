@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from src.core.exceptions import (
     ShortUrlGenerationException,
     LongUrlNotFoundException,
@@ -11,12 +13,7 @@ from src.utils import (
     Specification,
 )
 
-# TODO db as Repository, чтобы сервис не имел представления о конкретной
-#  реализации сессий, а этим занимался паттерн репозиторий
-
 # TODO Сделать домены, не зависящие от реализации, чтобы можно было подкидывать их как аннотации
-
-# TODO URLService Abstraction
 
 
 def find_by_slug(slug: str) -> Specification[ShortUrl]:
@@ -25,8 +22,20 @@ def find_by_slug(slug: str) -> Specification[ShortUrl]:
     )
 
 
-class UrlService:
+class AbstractUrlService(ABC):
+    @abstractmethod
+    async def create_random_short_url(self, url: str) -> ShortUrl: ...
 
+    @abstractmethod
+    async def create_custom_short_url(
+        self, url: str, slug: str
+    ) -> ShortUrl: ...
+
+    @abstractmethod
+    async def get_original_url(self, slug: str) -> ShortUrl: ...
+
+
+class UrlService(AbstractUrlService):
     def __init__(
         self,
         uow: AbstractAsyncUOW,

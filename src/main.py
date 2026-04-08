@@ -9,9 +9,9 @@ from fastapi.responses import RedirectResponse
 from starlette import status
 
 from src.core.exceptions import LongUrlNotFoundException
-from src.database.provider import SQLAlchemyDatabaseProvider
+from src.database.provider import DatabaseProvider, ServicesProvider
 from src.routers import router as short_url_router
-from src.services.url_service import UrlService
+from src.services.url_service import AbstractUrlService
 
 
 @asynccontextmanager
@@ -25,7 +25,10 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(short_url_router)
 
-container = make_async_container(SQLAlchemyDatabaseProvider())
+container = make_async_container(
+    DatabaseProvider(),
+    ServicesProvider(),
+)
 setup_dishka(container, app)
 
 
@@ -48,7 +51,7 @@ app.add_middleware(
 @inject
 async def root(
     slug: Annotated[str, Path(...)],
-    url_service: FromDishka[UrlService],
+    url_service: FromDishka[AbstractUrlService],
 ):
     try:
         long_url = (await url_service.get_original_url(slug)).long_url
