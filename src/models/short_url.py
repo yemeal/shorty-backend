@@ -10,7 +10,7 @@ from src.models.base import Base, UuidMixin
 class ShortUrl(Base, UuidMixin):
 
     short_url: Mapped[str] = mapped_column(
-        String(6),
+        String(30),
         index=True,
         unique=True,
     )

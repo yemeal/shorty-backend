@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from src.core.exceptions import (
     ShortUrlGenerationException,
     LongUrlNotFoundException,
+    SlugAlreadyExistsException,
 )
 from src.models import ShortUrl
 from src.utils import (
@@ -57,26 +58,42 @@ class UrlService(AbstractUrlService):
 
         self._max_retries = value
 
-    @retry_instancemethod
-    async def create_short_url(self, url: str) -> ShortUrl:
-        """
-        1. Gets URL
-        2. Generates slug for URL
-        3. Adds URL and slug to database
-        4. Commits the transaction
-        5. Returns the short URL
-        """
-        slug = generate_random_slug()
+    async def _save_to_db(self, url: str, slug: str) -> ShortUrl:
         short_url = ShortUrl(
             short_url=slug,
             long_url=url,
         )
-
         try:
             async with self._uow:
                 return await self._repo.add(short_url)
         except Exception as e:
             raise ShortUrlGenerationException(e)
+
+    @retry_instancemethod
+    async def create_random_short_url(self, url: str) -> ShortUrl:
+        """
+        1. Gets URL
+        2. Generates slug for URL
+        3. Adds URL and slug to database
+        4. Returns the short URL
+        """
+        slug = generate_random_slug()
+        return await self._save_to_db(url, slug)
+
+    async def create_custom_short_url(
+        self, url: str, slug: str
+    ) -> ShortUrl:
+        """
+        1. Gets URL and user_slug
+        2. Adds URL and slug to database
+        3. Returns the short URL
+        """
+        try:
+            return await self._save_to_db(url, slug)
+        except ShortUrlGenerationException:
+            raise SlugAlreadyExistsException(
+                f"Slug '{slug}' is already in use."
+            )
 
     async def get_original_url(self, slug: str) -> ShortUrl:
         """

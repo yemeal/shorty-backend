@@ -17,5 +17,16 @@ DATABASE_URL = URL.create(
     password=POSTGRES_PASSWORD,
     host=POSTGRES_HOST,
     port=POSTGRES_PORT,
-    database=POSTGRES_DB
+    database=POSTGRES_DB,
 ).render_as_string(hide_password=False)
+
+RESERVED_SLUGS = {
+    "docs",
+    "redoc",
+    "openapi.json",
+    "short_url",
+    "api",
+    "admin",
+    "апи",
+    "админ",
+}
