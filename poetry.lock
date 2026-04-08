@@ -161,6 +161,18 @@ files = [
 ]
 
 [[package]]
+name = "dishka"
+version = "1.9.1"
+description = "Cute DI framework with scopes and agreeable API"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    { file = "dishka-1.9.1-py3-none-any.whl", hash = "sha256:5080a46bf40bd403aee396aac81f999f679078655f9a6f2062111d62e94e7b18" },
+    { file = "dishka-1.9.1.tar.gz", hash = "sha256:973f19dc65160a97370181106764ae076052af4489e94b0cedb3eb4e47fe13bf" },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.135.3"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -1139,4 +1151,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "d316652160237cc249f2d2782ac1e7bf5ca762133a15d6f0cdca4ca2495d2c54"
+content-hash = "75c8b6cb319b0cf79bcf6e046aadcd799bbe962edccf8935ed1fbff5bb861d8c"
