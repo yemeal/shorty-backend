@@ -33,24 +33,11 @@ async def create_short_url(
     url_service: FromDishka[UrlService],
 ):
     try:
-        short_url = await url_service.create_short_url(payload.long_url)
-    # except RetriesAmountExceeded:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #         detail="We had problem generating short url, try again later.",
-    #     )
-    # temp
-    except Exception as exc:
-
-        print(traceback.format_exc())
-
+        short_url = await url_service.create_short_url(str(payload.long_url))
+    except RetriesAmountExceeded:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_type": type(exc).__name__,
-                "error_message": str(exc),
-                "traceback": traceback.format_exc()
-            }
+            detail="We had problem generating short url, try again later.",
         )
 
     return short_url
