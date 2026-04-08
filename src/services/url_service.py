@@ -28,10 +28,10 @@ def find_by_slug(slug: str) -> Specification[ShortUrl]:
 class UrlService:
 
     def __init__(
-            self,
-            uow: AbstractAsyncUOW,
-            repo: AbstractAsyncRepository[ShortUrl],
-            max_retries: int = 5,
+        self,
+        uow: AbstractAsyncUOW,
+        repo: AbstractAsyncRepository[ShortUrl],
+        max_retries: int = 5,
     ) -> None:
         self._uow = uow
         self._repo = repo
@@ -79,8 +79,9 @@ class UrlService:
         async with self._uow:
             result = await self._repo.find(find_by_slug(slug))
 
-            if result is None:
+            if not result:
                 raise LongUrlNotFoundException()
 
+            # [0] -> .first()
             result[0].usage_count += 1
             return await self._repo.update(result[0])
