@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Body, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-
 from typing import Annotated
 
-from src.database.di import get_session
+from dishka import FromDishka
+from fastapi import APIRouter, Body, HTTPException
+from starlette import status
+
+from src.core.exceptions import RetriesAmountExceeded
 from src.schemas.short_url import (
     ShortUrlCreate,
     ShortUrlResponse,
@@ -27,12 +27,14 @@ async def create_short_url(
         ShortUrlCreate,
         Body(embed=True),
     ],
-    session: Annotated[AsyncSession, Depends(get_session)],
-    url_service=Depends(UrlService),
+        url_service: FromDishka[UrlService],
 ):
-    # TODO try/except
-    short_url = await url_service.create_short_url(
-        url=str(payload.long_url),
-        db=session,
-    )
+    try:
+        short_url = await url_service.create_short_url(payload.long_url)
+    except RetriesAmountExceeded:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="We had problem generating short url, try again later.",
+        )
+
     return short_url

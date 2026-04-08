@@ -12,3 +12,11 @@ class ShortUrlGenerationException(SlugException):
 
 class LongUrlNotFoundException(SlugException):
     pass
+
+
+class RetryException(Exception):
+    pass
+
+
+class RetriesAmountExceeded(RetryException):
+    pass

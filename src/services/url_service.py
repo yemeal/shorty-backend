@@ -1,57 +1,86 @@
-from sqlalchemy import select
-
 from src.core.exceptions import (
     ShortUrlGenerationException,
     LongUrlNotFoundException,
 )
 from src.models import ShortUrl
-from src.utils import generate_random_slug
+from src.utils import (
+    generate_random_slug,
+    AbstractAsyncRepository,
+    AbstractAsyncUOW,
+    retry_instancemethod,
+    Specification,
+)
 
 # TODO db as Repository, чтобы сервис не имел представления о конкретной
 #  реализации сессий, а этим занимался паттерн репозиторий
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
+
+# TODO Сделать домены, не зависящие от реализации, чтобы можно было подкидывать их как аннотации
+
+# TODO URLService Abstraction
+
+
+def find_by_slug(slug: str) -> Specification[ShortUrl]:
+    return Specification[ShortUrl](
+        ShortUrl.short_url == slug, ShortUrl.is_active == True
+    )
 
 
 class UrlService:
-    @staticmethod
-    async def create_short_url(
-        url: str,
-        db: AsyncSession,
-        retries: int = 5,
-    ) -> ShortUrl:
-        # Принимает юрл
-        # Генерит для него слаг
-        # Асинхронно обращается к db чтобы он связал юрл и слаг
-        # Репозиторий вызывает исключение, если такой слаг уже существует,
-        #   мы ретраим 5 раз и если 5 раз подряд у нас вылетает ошибка, то пробрасываем ошибку о том,
-        #   что мы совсем тупые, и чтобы конечный пользователь либо повторил, либо выбросил 500 ошибку сервера
-        # Если все успешно и слаг добавлен в бд, то возвращаем его.
-        for _ in range(retries):
+
+    def __init__(
+            self,
+            uow: AbstractAsyncUOW,
+            repo: AbstractAsyncRepository[ShortUrl],
+            max_retries: int = 5,
+    ) -> None:
+        self._uow = uow
+        self._repo = repo
+        self.max_retries = max_retries
+
+    @property
+    def max_retries(self) -> int:
+        return self._max_retries
+
+    @max_retries.setter
+    def max_retries(self, value: int) -> None:
+        if value < 1:
+            raise ValueError("Max retries must be at least 1")
+
+        self._max_retries = value
+
+    @retry_instancemethod
+    async def create_short_url(self, url: str) -> ShortUrl:
+        """
+        1. Gets URL
+        2. Generates slug for URL
+        3. Adds URL and slug to database
+        4. Commits the transaction
+        5. Returns the short URL
+        """
+        slug = generate_random_slug()
+        short_url = ShortUrl(
+            short_url=slug,
+            long_url=url,
+        )
+
+        async with self._uow:
             try:
-                short_url = ShortUrl(
-                    short_url=generate_random_slug(),
-                    long_url=url,
-                )
-                db.add(short_url)
-                await db.commit()
-                break
-            except IntegrityError:
-                await db.rollback()
-        else:
-            raise ShortUrlGenerationException
+                return await self._repo.add(short_url)
+            except Exception as e:
+                raise ShortUrlGenerationException(e)
 
-        return short_url
+    async def get_original_url(self, slug: str) -> ShortUrl:
+        """
+        1. Finds original URL by slug
+        2. Increments usage count
+        3. Commits changes
+        4. Returns the original URL
+        """
+        async with self._uow:
+            result = await self._repo.find(find_by_slug(slug))
 
-    @staticmethod
-    async def get_long_url_by_short_url(
-        short_url: str,
-        db: AsyncSession,
-    ) -> ShortUrl:
-        query = select(ShortUrl).where(ShortUrl.short_url == short_url)
-        result: ShortUrl | None = await db.scalar(query)
-        if result is None:
-            raise LongUrlNotFoundException()
-        result.usage_count += 1
-        await db.commit()
-        return result
+            if result is None:
+                raise LongUrlNotFoundException()
+
+            result[0].usage_count += 1
+            return await self._repo.update(result[0])
