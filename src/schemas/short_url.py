@@ -31,9 +31,9 @@ class ShortUrlCreate(BaseModel):
         if value is None:
             return None
 
-        value = value.strip().lower()
+        value = value.strip()
 
-        if value in RESERVED_SLUGS:
+        if value.lower() in RESERVED_SLUGS:
             raise SlugAlreadyExistsException(
                 f"Slug '{value}' is reserved by system"
             )
