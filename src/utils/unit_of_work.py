@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from types import TracebackType
 
-from src.utils.session import AsyncTransactionProtocol
+from src.utils.protocols.session import AsyncTransactionProtocol
 
 
 # Abstract Asynchronous Unit of Work
