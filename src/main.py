@@ -54,8 +54,7 @@ async def root(
     url_service: FromDishka[AbstractUrlService],
 ):
     try:
-        # Lowercase for case-insensitive matching
-        long_url = (await url_service.get_original_url(slug.lower())).long_url
+        long_url = (await url_service.get_original_url(slug)).long_url
     except LongUrlNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
