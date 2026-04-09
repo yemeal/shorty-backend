@@ -19,7 +19,7 @@ from src.utils import (
 
 def find_by_slug(slug: str) -> Specification[ShortUrl]:
     return Specification[ShortUrl](
-        ShortUrl.short_url == slug, ShortUrl.is_active == True
+        ShortUrl.slug == slug, ShortUrl.is_active == True
     )
 
 
@@ -60,7 +60,7 @@ class UrlService(AbstractUrlService):
 
     async def _save_to_db(self, url: str, slug: str) -> ShortUrl:
         short_url = ShortUrl(
-            short_url=slug,
+            slug=slug,
             long_url=url,
         )
         try:

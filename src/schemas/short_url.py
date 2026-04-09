@@ -52,13 +52,13 @@ class ShortUrl(BaseModel):
         Field(description="Unique short url identifier"),
     ]
 
-    short_url: Annotated[
+    slug: Annotated[
         str,
-        Field(description="Short (hashed) URL)"),
+        Field(description="Short URL slug"),
     ]
     long_url: Annotated[
         str,
-        Field(description="Long URL for this hashed URL"),
+        Field(description="Long URL for this short URL"),
     ]
 
     created_at: Annotated[
@@ -83,13 +83,13 @@ class ShortUrl(BaseModel):
 
 
 class ShortUrlResponse(BaseModel):
-    short_url: Annotated[
+    slug: Annotated[
         str,
-        Field(description="Short (hashed) URL"),
+        Field(description="Short URL slug"),
     ]
     long_url: Annotated[
         str,
-        Field(description="Long URL for this hashed URL"),
+        Field(description="Long URL for this short URL"),
     ]
 
     model_config = ConfigDict(from_attributes=True)

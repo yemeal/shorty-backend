@@ -1,15 +1,21 @@
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import String, func
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy import String, func, ForeignKey
+from sqlalchemy.orm import mapped_column, Mapped, relationship
+
+from src.models.base import Base, UuidMixin, TimestampMixin, IsActiveMixin
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import User
+    from .short_url_visit import ShortUrlVisit
 
 
-from src.models.base import Base, UuidMixin
+class ShortUrl(Base, TimestampMixin, IsActiveMixin,  UuidMixin):
 
-
-class ShortUrl(Base, UuidMixin):
-
-    short_url: Mapped[str] = mapped_column(
+    slug: Mapped[str] = mapped_column(
         String(30),
         index=True,
         unique=True,
@@ -17,17 +23,10 @@ class ShortUrl(Base, UuidMixin):
     long_url: Mapped[str] = mapped_column(
         String(20000),
     )
-
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime | None] = mapped_column(
-        default=None,
-    )
-
     usage_count: Mapped[int] = mapped_column(
         default=0,
     )
-    is_active: Mapped[bool] = mapped_column(
-        default=True,
-    )
+    user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+
+    owner: Mapped["User"] = relationship(back_populates="short_urls")
+    visits: Mapped[list["ShortUrlVisit"]] = relationship(back_populates="short_url")
