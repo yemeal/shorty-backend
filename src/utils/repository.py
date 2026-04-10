@@ -2,18 +2,22 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 from sqlalchemy import select
+from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
+
+from src.core.exceptions import CreatingException
 from src.utils.protocols.session import AsyncSessionProtocol
 from src.utils.specification import Specification
 
 
 class AbstractAsyncRepository[ModelType](ABC):
     @abstractmethod
-    async def add(self, entity: ModelType) -> ModelType | None:
+    async def add(self, entity: ModelType) -> ModelType:
         raise NotImplementedError
 
     @abstractmethod
-    async def get(self, entity_id: int) -> ModelType | None:
+    async def get(self, entity_id: UUID) -> ModelType | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -30,6 +34,12 @@ class AbstractAsyncRepository[ModelType](ABC):
     ) -> Sequence[ModelType] | None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def find_one(
+        self, specification: Specification[ModelType]
+    ) -> ModelType | None:
+        raise NotImplementedError
+
 
 class SQLAlchemyAsyncRepository[ModelType](
     AbstractAsyncRepository[ModelType]
@@ -40,12 +50,15 @@ class SQLAlchemyAsyncRepository[ModelType](
         self.session = session
         self.model_class = model_class
 
-    async def add(self, entity: ModelType) -> ModelType | None:
-        self.session.add(entity)
-        await self.session.flush()
-        return entity
+    async def add(self, entity: ModelType) -> ModelType:
+        try:
+            self.session.add(entity)
+            await self.session.flush()
+            return entity
+        except IntegrityError:
+            raise CreatingException()
 
-    async def get(self, entity_id: int) -> ModelType | None:
+    async def get(self, entity_id: UUID) -> ModelType | None:
         return await self.session.get(self.model_class, entity_id)
 
     async def update(self, entity: ModelType) -> ModelType | None:
@@ -65,3 +78,12 @@ class SQLAlchemyAsyncRepository[ModelType](
 
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def find_one(
+        self, specification: Specification[ModelType]
+    ) -> ModelType | None:
+        stmt = select(self.model_class)
+        stmt = specification.apply(stmt)
+
+        result = await self.session.execute(stmt)
+        return result.scalar()

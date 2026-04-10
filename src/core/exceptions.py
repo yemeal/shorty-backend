@@ -13,6 +13,8 @@ class ShortUrlGenerationException(SlugException):
 
 class LongUrlNotFoundException(SlugException):
     pass
+
+
 # endregion Short URL exceptions
 
 
@@ -23,6 +25,8 @@ class RetryException(Exception):
 
 class RetriesAmountExceeded(RetryException):
     pass
+
+
 # endregion Retry exceptions
 
 
@@ -30,17 +34,38 @@ class RetriesAmountExceeded(RetryException):
 class UserException(Exception):
     pass
 
+
 class IncorrectEmailOrPasswordException(UserException):
     pass
+
 
 class UserExistsException(UserException):
     pass
 
+
 class UserWithEmailExistsException(UserExistsException):
     pass
 
+
 class UserWithUsernameExistsException(UserExistsException):
     pass
+
+
+class UserNotFoundException(UserException):
+    pass
+
+
+class UserWithEmailNotFoundException(UserNotFoundException):
+    pass
+
+
+class UserWithIdNotFoundException(UserNotFoundException):
+    pass
+
+
+class UserWithUsernameNotFoundException(UserNotFoundException):
+    pass
+
 
 # endregion User exceptions
 
@@ -50,14 +75,28 @@ class TokenException(Exception):
     pass
 
 
-class TokenExpiredException(TokenException):
+class InvalidTokenException(TokenException):
     pass
 
 
-class InvalidTokenTypeException(TokenException):
+class TokenExpiredException(InvalidTokenException):
     pass
 
 
-class TokenNoSubException(TokenException):
+class InvalidTokenTypeException(InvalidTokenException):
     pass
+
+
+class TokenNoSubException(InvalidTokenException):
+    pass
+
+
 # endregion Token/Auth exceptions
+
+
+class RepositoryException(Exception):
+    pass
+
+
+class CreatingException(RepositoryException):
+    pass
