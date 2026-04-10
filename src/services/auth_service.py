@@ -86,26 +86,22 @@ class AuthService:
         self,
         email: str,
         password: str,
-    ) -> dict[str, str]:
+    ) -> dict[str, User | dict[str, str]]:
         try:
             user = await self._user_service.get_user_by_email(email)
             if not self._password_hasher.verify(
-                password, user.hashed_password
+                password, 
+                user.hashed_password,
             ):
                 raise IncorrectEmailOrPasswordException()
-            access_token = self._token_service.issue_token(
-                user, token_type="access"
-            )
-            refresh_token = self._token_service.issue_token(
-                user, token_type="refresh"
-            )
         except UserWithEmailNotFoundException:
             raise IncorrectEmailOrPasswordException()
+        
+        tokens = self._create_refresh_and_access_tokens(user)
 
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "Bearer",
+            "user": user,
+            "tokens": tokens,
         }
 
     async def refresh(

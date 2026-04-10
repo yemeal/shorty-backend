@@ -19,3 +19,22 @@ class AuthResponse(BaseModel):
             description="Tokens (access+refresh) schema",
         ),
     ]
+
+class AuthCookieResponse(BaseModel):
+    user: Annotated[
+        UserResponse,
+        Field(
+            ...,
+            description="User schema",
+        ),
+    ]
+
+
+class OkResponse(BaseModel):
+    ok: Annotated[
+        bool,
+        Field(
+            ...,
+            description="Operation status"    
+        )
+    ]

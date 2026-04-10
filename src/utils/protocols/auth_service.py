@@ -18,7 +18,11 @@ class AuthServiceProtocol(Protocol):
         self,
         email: str,
         password: str,
-    ) -> dict[str, str]: ...
+    ) -> dict[str, User | dict[str, str]]:
+        """
+        returns: dict("user": <user>, "tokens": <tokens (access and refresh)>)
+        """
+        ...
 
     async def refresh(
         self,
