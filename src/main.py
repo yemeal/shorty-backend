@@ -9,21 +9,23 @@ from fastapi.responses import RedirectResponse
 from starlette import status
 
 from src.core.exceptions import LongUrlNotFoundException
+from src.utils.protocols import UrlServiceProtocol
 from src.database.provider import DatabaseProvider, ServicesProvider
-from src.routers import router as short_url_router
-from src.services.url_service import AbstractUrlService
+from src.routers import short_url_router, auth_router
+
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     yield
 
-    await app.state.dishka_container.close()
+    await _app.state.dishka_container.close()
 
 
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(short_url_router)
+app.include_router(auth_router)
 
 container = make_async_container(
     DatabaseProvider(),
@@ -47,11 +49,18 @@ app.add_middleware(
 )
 
 
+@app.get("/me")
+@inject
+async def me():
+    # TODO return curr user profile
+    pass
+
+
 @app.get("/{slug}")
 @inject
 async def root(
     slug: Annotated[str, Path(...)],
-    url_service: FromDishka[AbstractUrlService],
+    url_service: FromDishka[UrlServiceProtocol],
 ):
     try:
         long_url = (await url_service.get_original_url(slug)).long_url

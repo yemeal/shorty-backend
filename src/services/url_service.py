@@ -1,11 +1,9 @@
-from abc import ABC, abstractmethod
-
 from src.core.exceptions import (
     ShortUrlGenerationException,
     LongUrlNotFoundException,
     SlugAlreadyExistsException,
 )
-from src.models import ShortUrl
+from src.models import ShortUrl, User
 from src.utils import (
     generate_random_slug,
     AbstractAsyncRepository,
@@ -23,20 +21,7 @@ def find_by_slug(slug: str) -> Specification[ShortUrl]:
     )
 
 
-class AbstractUrlService(ABC):
-    @abstractmethod
-    async def create_random_short_url(self, url: str) -> ShortUrl: ...
-
-    @abstractmethod
-    async def create_custom_short_url(
-        self, url: str, slug: str
-    ) -> ShortUrl: ...
-
-    @abstractmethod
-    async def get_original_url(self, slug: str) -> ShortUrl: ...
-
-
-class UrlService(AbstractUrlService):
+class UrlService:
     def __init__(
         self,
         uow: AbstractAsyncUOW,
@@ -58,10 +43,13 @@ class UrlService(AbstractUrlService):
 
         self._max_retries = value
 
-    async def _save_to_db(self, url: str, slug: str) -> ShortUrl:
+    async def _save_to_db(
+        self, url: str, slug: str, user: User | None
+    ) -> ShortUrl:
         short_url = ShortUrl(
             slug=slug,
             long_url=url,
+            user_id=user.id if user else None,
         )
         try:
             async with self._uow:
@@ -70,7 +58,11 @@ class UrlService(AbstractUrlService):
             raise ShortUrlGenerationException(e)
 
     @retry_instancemethod
-    async def create_random_short_url(self, url: str) -> ShortUrl:
+    async def create_random_short_url(
+        self,
+        url: str,
+        user: User | None = None,
+    ) -> ShortUrl:
         """
         1. Gets URL
         2. Generates slug for URL
@@ -78,10 +70,13 @@ class UrlService(AbstractUrlService):
         4. Returns the short URL
         """
         slug = generate_random_slug()
-        return await self._save_to_db(url, slug)
+        return await self._save_to_db(url, slug, user)
 
     async def create_custom_short_url(
-        self, url: str, slug: str
+        self,
+        url: str,
+        slug: str,
+        user: User | None = None,
     ) -> ShortUrl:
         """
         1. Gets URL and user_slug
@@ -89,7 +84,7 @@ class UrlService(AbstractUrlService):
         3. Returns the short URL
         """
         try:
-            return await self._save_to_db(url, slug)
+            return await self._save_to_db(url, slug, user)
         except ShortUrlGenerationException:
             raise SlugAlreadyExistsException(
                 f"Slug '{slug}' is already in use."
@@ -103,11 +98,15 @@ class UrlService(AbstractUrlService):
         4. Returns the original URL
         """
         async with self._uow:
-            result = await self._repo.find(find_by_slug(slug))
+            short_url = await self._repo.find_one(find_by_slug(slug))
 
-            if not result:
+            if not short_url:
                 raise LongUrlNotFoundException()
 
-            # [0] -> .first()
-            result[0].usage_count += 1
-            return await self._repo.update(result[0])
+            short_url.usage_count += 1
+
+            # TODO Short URL visit
+            if short_url.user_id is not None:
+                pass
+
+            return await self._repo.update(short_url)
