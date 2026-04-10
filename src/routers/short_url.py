@@ -9,6 +9,7 @@ from src.core.exceptions import (
     RetriesAmountExceeded,
     SlugAlreadyExistsException,
 )
+from src.core.http_exceptions import HTTPErrors
 from src.utils.protocols import UrlServiceProtocol
 from src.models import User as UserModel
 from src.schemas.short_url import (
@@ -46,14 +47,8 @@ async def create_short_url(
                 str(payload.long_url), current_user
             )
     except SlugAlreadyExistsException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This short url already exists.",
-        )
+        raise HTTPErrors.ShortUrl.SLUG_ALREADY_EXISTS()
     except RetriesAmountExceeded:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="We had problem generating short url, try again later.",
-        )
+        raise HTTPErrors.ShortUrl.RETRIES_AMOUNT_EXCEEDED()
 
     return short_url

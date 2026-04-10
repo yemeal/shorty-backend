@@ -1,13 +1,13 @@
 from typing import Annotated
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 
 from src.schemas.tokens import RefreshTokenRequest, TokensResponse
 from src.schemas.user import UserCreate
-from src.schemas.auth import AuthResponse
+from src.schemas.auth import AuthCookieResponse, OkResponse
 from src.utils.protocols import AuthServiceProtocol
 from src.core.exceptions import (
     UserWithEmailExistsException,
@@ -16,6 +16,8 @@ from src.core.exceptions import (
     UserNotFoundException,
 )
 from src.core.exceptions import TokenException, TokenExpiredException
+from src.core.http_exceptions import HTTPErrors
+from src.core.config import COOKIE_DOMAIN, COOKIE_SAMESITE, COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 router = APIRouter(
     prefix="/auth",
@@ -23,14 +25,45 @@ router = APIRouter(
 )
 
 
+def _set_tokens_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    # access cookie 
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=COOKIE_SECURE,       
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+    # refresh cookie 
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=COOKIE_SECURE,       
+        samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/auth",
+    )
+
+
 @router.post(
     "/register",
     status_code=status.HTTP_201_CREATED,
-    response_model=AuthResponse,
+    response_model=AuthCookieResponse,
 )
 @inject
 async def register(
     payload: Annotated[UserCreate, Body()],
+    response: Response,
     auth_service: FromDishka[AuthServiceProtocol],
 ):
     try:
@@ -40,77 +73,101 @@ async def register(
             str(payload.password),
         )
     except UserWithEmailExistsException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User with this email already exists",
-        )
+        raise HTTPErrors.User.EMAIL_EXISTS()
     except UserWithUsernameExistsException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User with this username already exists",
-        )
-    return auth_response
+        raise HTTPErrors.User.USERNAME_EXISTS()
+
+    _set_tokens_cookies(
+        response,
+        access_token=auth_response["tokens"]["access_token"],
+        refresh_token=auth_response["tokens"]["refresh_token"]
+    )
+
+    return {
+        "user": auth_response["user"],
+    }
+
+
 
 
 @router.post(
     "/login",
-    response_model=TokensResponse,
+    response_model=AuthCookieResponse,
 )
 @inject
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    response: Response,
     auth_service: FromDishka[AuthServiceProtocol],
 ):
     try:
-        return await auth_service.login(
+        auth_response = await auth_service.login(
             # .username in form_data means email
             str(form_data.username),
             str(form_data.password),
         )
     except IncorrectEmailOrPasswordException:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPErrors.Auth.INCORRECT_EMAIL_OR_PASSWORD()
 
+    _set_tokens_cookies(
+        response,
+        access_token=auth_response["tokens"]["access_token"],
+        refresh_token=auth_response["tokens"]["refresh_token"]
+    )
 
-@router.post("/logout")
-@inject
-async def logout():
-    # TODO Invalidate refresh or clear cookies
-    pass
+    return {
+        "user": auth_response["user"],
+    }
 
 
 @router.post(
-    "/refresh",
-    response_model=TokensResponse,
+    "/refresh", 
+    response_model=OkResponse
 )
 @inject
 async def refresh(
-    payload: Annotated[RefreshTokenRequest, Body()],
+    request: Request,
+    response: Response,
     auth_service: FromDishka[AuthServiceProtocol],
 ):
-    try:
-        tokens = await auth_service.refresh(payload.refresh_token)
-    except TokenExpiredException:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except TokenException:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except UserNotFoundException:
-        raise HTTPException(
-            # TODO Точно ли стоит 404 возвращать
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Token owner not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token is None:
+        raise HTTPErrors.Auth.NOT_AUTHENTICATED()
 
-    return tokens
+    try:
+        tokens = await auth_service.refresh(refresh_token)
+    except TokenExpiredException:
+        raise HTTPErrors.Auth.TOKEN_EXPIRED()
+    except TokenException:
+        raise HTTPErrors.Auth.COULD_NOT_VALIDATE_CREDENTIALS()
+    except UserNotFoundException:
+        raise HTTPErrors.Auth.USER_NOT_FOUND()
+
+    _set_tokens_cookies(
+        response,
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+    )
+
+    return {"ok": True}
+
+
+@router.post(
+    "/logout", 
+    response_model=OkResponse
+)
+@inject
+async def logout(
+    response: Response,
+):
+    # TODO Invalidate refresh from db
+    response.delete_cookie(
+        "access_token", 
+        path="/",
+    )
+    response.delete_cookie(
+        "refresh_token",
+        path="/auth",
+    )
+
+    return {"ok": True}
