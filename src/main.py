@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from dishka import make_async_container
-from dishka.integrations.fastapi import setup_dishka, FromDishka, inject
+from dishka.integrations.fastapi import setup_dishka, FromDishka, FastapiProvider, inject
 from fastapi import FastAPI, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -49,6 +49,7 @@ container = make_async_container(
     DatabaseProvider(),
     ServicesProvider(),
     UserProvider(),
+    FastapiProvider(),
 )
 setup_dishka(container, app)
 
