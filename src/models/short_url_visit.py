@@ -1,4 +1,4 @@
-from src.models.base import Base, TimestampMixin, IsActiveMixin, UuidMixin
+from src.models.base import Base, UuidMixin
 from sqlalchemy.orm import Mapped, mapped_column, relationship      
 from sqlalchemy import String, func, ForeignKey
 from uuid import UUID
@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .short_url import ShortUrl
-    from .user import User
+
 
 class ShortUrlVisit(Base, UuidMixin):
 

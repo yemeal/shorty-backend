@@ -11,6 +11,7 @@ from sqlalchemy.orm import (
 import re
 
 
+# noinspection PyMethodParameters
 class Base(DeclarativeBase):
     __abstract__ = True
 

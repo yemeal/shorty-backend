@@ -3,20 +3,22 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .short_url import ShortUrl
 
 
-class User(Base, TimestampMixin, IsActiveMixin,  UuidMixin):
+class User(Base, TimestampMixin, IsActiveMixin, UuidMixin):
     username: Mapped[str] = mapped_column(
-        String(20), 
+        String(20),
         unique=True,
+        index=True,
     )
     email: Mapped[str] = mapped_column(
-        String(255), 
-        unique=True, 
-        index=True
-    )    
+        String(255),
+        unique=True,
+        index=True,
+    )
     hashed_password: Mapped[str]
 
     short_urls: Mapped[list["ShortUrl"]] = relationship(

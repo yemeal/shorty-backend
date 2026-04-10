@@ -1,7 +1,6 @@
-from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import String, func, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from src.models.base import Base, UuidMixin, TimestampMixin, IsActiveMixin

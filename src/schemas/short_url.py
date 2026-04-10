@@ -85,11 +85,15 @@ class ShortUrl(BaseModel):
 class ShortUrlResponse(BaseModel):
     slug: Annotated[
         str,
-        Field(description="Short URL slug"),
+        Field(..., description="Short URL slug"),
     ]
     long_url: Annotated[
         str,
-        Field(description="Long URL for this short URL"),
+        Field(..., description="Long URL for this short URL"),
+    ]
+    user_id: Annotated[
+        UUID | None,
+        Field(default=None, description="Owner UUID for this short URL")
     ]
 
     model_config = ConfigDict(from_attributes=True)
