@@ -1,6 +1,8 @@
 from typing import AsyncGenerator
+from uuid import UUID
 
 from dishka import Provider, Scope, provide
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     create_async_engine,
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
 
 from src.core.config import DATABASE_URL
 from src.core.password_hasher import PasslibPasswordHasher
+from src.core.http_exceptions import HTTPErrors
 from src.models import ShortUrl, User
 from src.services.auth_service import AuthService
 from src.services.token_service import JWTTokenService
@@ -25,6 +28,13 @@ from src.utils import (
     AuthServiceProtocol,
 )
 from src.utils import SQLAlchemyAsyncRepository, AbstractAsyncRepository
+from src.core.exceptions import (
+    TokenNoSubException, 
+    UserWithIdNotFoundException, 
+    TokenException,
+    TokenExpiredException,
+    InvalidTokenTypeException,
+)
 
 
 class DatabaseProvider(Provider):
@@ -60,11 +70,79 @@ class DatabaseProvider(Provider):
             yield session
 
 
-class ServicesProvider(Provider):
+class UserProvider(Provider):
+    async def _get_curr_user(
+        self,
+        request: Request,
+        token_service: TokenServiceProtocol,
+        user_service: UserServiceProtocol,
+    ) -> User:
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            raise HTTPErrors.Auth.NOT_AUTHENTICATED()
+
+        try:
+            payload = token_service.decode_token(
+                access_token,
+                token_type="access",
+            )
+            sub = payload.get("sub")
+            user_id = UUID(str(sub))
+        except TokenNoSubException:
+            raise HTTPErrors.Auth.TOKEN_SUBJECT_MISSING()
+        except InvalidTokenTypeException:
+            raise HTTPErrors.Auth.INVALID_TOKEN_TYPE()
+        except TokenExpiredException:
+            raise HTTPErrors.Auth.TOKEN_EXPIRED()
+        except TokenException:
+            raise HTTPErrors.Auth.COULD_NOT_VALIDATE_CREDENTIALS()
+
+        try:
+            return await user_service.get_user_by_id(user_id)
+        except UserWithIdNotFoundException:
+            raise HTTPErrors.Auth.USER_NOT_FOUND()
+        except Exception:
+            raise HTTPErrors.Server.INTERNAL_ERROR()
+
     @provide(scope=Scope.REQUEST)
-    def provide_current_user(self) -> User | None:
-        # TODO Replace with real auth-based user resolution later.
-        return None
+    async def provide_current_user_optional(
+        self,
+        request: Request,
+        token_service: TokenServiceProtocol,
+        user_service: UserServiceProtocol,
+    ) -> User | None:
+        try:
+            return await self._get_curr_user(
+                request,
+                token_service,
+                user_service,
+            )
+        except Exception:
+            return None
+
+    @provide(scope=Scope.REQUEST)
+    async def provide_current_user_required(
+        self,
+        request: Request,
+        token_service: TokenServiceProtocol,
+        user_service: UserServiceProtocol,
+    ) -> User:
+        curr_user = await self._get_curr_user(
+            request,
+            token_service,
+            user_service,
+        ) 
+        return curr_user
+
+class ServicesProvider(Provider):
+
+    @provide(scope=Scope.APP)
+    def provide_password_hasher(self) -> PasswordHasherProtocol:
+        return PasslibPasswordHasher()
+
+    @provide(scope=Scope.APP)
+    def provide_token_service(self) -> TokenServiceProtocol:
+        return JWTTokenService()
 
     @provide(scope=Scope.REQUEST)
     def provide_uow(
@@ -87,14 +165,6 @@ class ServicesProvider(Provider):
         repo: AbstractAsyncRepository[ShortUrl],
     ) -> UrlServiceProtocol:
         return UrlService(uow=uow, repo=repo)
-
-    @provide(scope=Scope.APP)
-    def provide_password_hasher(self) -> PasswordHasherProtocol:
-        return PasslibPasswordHasher()
-
-    @provide(scope=Scope.APP)
-    def provide_token_service(self) -> TokenServiceProtocol:
-        return JWTTokenService()
 
     @provide(scope=Scope.REQUEST)
     def provide_user_repo(
