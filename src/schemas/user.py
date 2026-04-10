@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 from uuid import UUID
 
@@ -33,7 +33,7 @@ class UserCreate(BaseModel):
     ]
 
 
-class User(BaseModel):
+class UserResponse(BaseModel):
     id: Annotated[
         UUID,
         Field(..., description="Unique identifier of the user"),
@@ -59,10 +59,8 @@ class User(BaseModel):
         ),
     ]
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserUpdate(BaseModel):
-    pass
-
-
-class UserResponse(BaseModel):
     pass

@@ -2,6 +2,8 @@ from .url_service import UrlServiceProtocol
 from .session import AsyncSessionProtocol, AsyncTransactionProtocol
 from .auth_service import AuthServiceProtocol
 from .token_service import TokenServiceProtocol
+from .password_hasher import PasswordHasherProtocol
+from .user_service import UserServiceProtocol
 
 __all__ = (
     "UrlServiceProtocol",
@@ -9,4 +11,6 @@ __all__ = (
     "TokenServiceProtocol",
     "AsyncSessionProtocol",
     "AsyncTransactionProtocol",
+    "PasswordHasherProtocol",
+    "UserServiceProtocol",
 )
