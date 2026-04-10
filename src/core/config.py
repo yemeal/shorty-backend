@@ -29,14 +29,63 @@ DATABASE_URL = URL.create(
 ).render_as_string(hide_password=False)
 
 RESERVED_SLUGS = {
+    # Core app/API routes
     "docs",
     "redoc",
     "openapi.json",
     "short_url",
+    "auth",
+    "me",
     "api",
     "admin",
+    "health",
+    "metrics",
+    "graphql",
+    "ws",
+    # Frontend SPA routes
+    "login",
+    "register",
+    "profile",
+    "placeholder",
+    "profile-placeholder",
+    # Common static/system paths
+    "favicon.ico",
+    "favicon",
+    "robots.txt",
+    "robots",
+    "sitemap.xml",
+    "sitemap",
+    "manifest.webmanifest",
+    "manifest",
+    "assets",
+    "static",
+    "public",
+    "img",
+    "images",
+    "fonts",
+    "css",
+    "js",
+    "uploads",
+    "media",
+    # Marketing/service reserved words
+    "about",
+    "contact",
+    "privacy",
+    "terms",
+    "support",
+    "help",
+    "status",
+    "dashboard",
+    "settings",
+    "shorty",
+    # Cyrillic aliases
     "апи",
     "админ",
+    "доки",
+    "вход",
+    "регистрация",
+    "профиль",
+    "настройки",
 }
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
