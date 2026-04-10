@@ -12,7 +12,7 @@ from src.core.exceptions import LongUrlNotFoundException
 from src.core.http_exceptions import HTTPErrors
 from src.core.config import TRUSTED_ORIGINS
 from src.utils.protocols import UrlServiceProtocol
-from src.database.provider import DatabaseProvider, ServicesProvider
+from src.database.provider import DatabaseProvider, ServicesProvider, UserProvider
 from src.routers import short_url_router, auth_router
 from src.middleware.origin_check import OriginCheckMiddleware
 
@@ -48,6 +48,7 @@ app.include_router(auth_router)
 container = make_async_container(
     DatabaseProvider(),
     ServicesProvider(),
+    UserProvider(),
 )
 setup_dishka(container, app)
 
