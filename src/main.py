@@ -3,15 +3,18 @@ from typing import Annotated
 
 from dishka import make_async_container
 from dishka.integrations.fastapi import setup_dishka, FromDishka, inject
-from fastapi import FastAPI, Path, HTTPException
+from fastapi import FastAPI, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from starlette import status
 
 from src.core.exceptions import LongUrlNotFoundException
+from src.core.http_exceptions import HTTPErrors
+from src.core.config import TRUSTED_ORIGINS
 from src.utils.protocols import UrlServiceProtocol
 from src.database.provider import DatabaseProvider, ServicesProvider
 from src.routers import short_url_router, auth_router
+from src.middleware.origin_check import OriginCheckMiddleware
 
 
 
@@ -24,6 +27,21 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+#CSRF
+app.add_middleware(
+    OriginCheckMiddleware,
+    trusted_origins=TRUSTED_ORIGINS,
+)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=TRUSTED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(short_url_router)
 app.include_router(auth_router)
 
@@ -32,21 +50,6 @@ container = make_async_container(
     ServicesProvider(),
 )
 setup_dishka(container, app)
-
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Local Vite frontend
-        "http://localhost:8000",  # Swagger/Local backend
-        "https://шорти.рф",  # Production domain (just in case)
-        "https://xn--h1algi1a.xn--p1ai",  # Punycode production domain
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 @app.get("/me")
@@ -65,10 +68,7 @@ async def root(
     try:
         long_url = (await url_service.get_original_url(slug)).long_url
     except LongUrlNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Original URL not found",
-        )
+        raise HTTPErrors.ShortUrl.ORIGINAL_URL_NOT_FOUND()
 
     return RedirectResponse(
         url=long_url,
