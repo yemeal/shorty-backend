@@ -19,6 +19,7 @@ from src.services.token_service import JWTTokenService
 from src.services.url_service import UrlService
 from src.services.user_service import UserService
 from src.utils.protocols import UrlServiceProtocol
+from src.database.user_short_url_query_adapter import SqlAlchemyUserShortUrlQuery
 from src.utils import (
     AsyncUOW,
     AbstractAsyncUOW,
@@ -26,6 +27,7 @@ from src.utils import (
     TokenServiceProtocol,
     UserServiceProtocol,
     AuthServiceProtocol,
+    UserShortUrlQueryPort,
 )
 from src.utils import SQLAlchemyAsyncRepository, AbstractAsyncRepository
 from src.core.exceptions import (
@@ -174,12 +176,24 @@ class ServicesProvider(Provider):
         return SQLAlchemyAsyncRepository[User](session, User)  # type: ignore[arg-type]
 
     @provide(scope=Scope.REQUEST)
+    def provide_user_short_url_query(
+        self,
+        session: AsyncSession,
+    ) -> UserShortUrlQueryPort:
+        return SqlAlchemyUserShortUrlQuery(session)
+
+    @provide(scope=Scope.REQUEST)
     def provide_user_service(
         self,
         uow: AbstractAsyncUOW,
         repo: AbstractAsyncRepository[User],
+        user_short_url_query: UserShortUrlQueryPort,
     ) -> UserServiceProtocol:
-        return UserService(uow=uow, repo=repo)
+        return UserService(
+            uow=uow,
+            repo=repo,
+            user_short_url_query=user_short_url_query,
+        )
 
     @provide(scope=Scope.REQUEST)
     def provide_auth_service(

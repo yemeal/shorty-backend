@@ -6,6 +6,7 @@ import re
 
 from src.core.config import RESERVED_SLUGS
 from src.core.exceptions import SlugAlreadyExistsException
+from src.schemas.pagination_meta import PaginationMeta
 
 
 class ShortUrlCreate(BaseModel):
@@ -66,7 +67,7 @@ class ShortUrl(BaseModel):
         Field(description="Creation date"),
     ]
     updated_at: Annotated[
-        datetime,
+        datetime | None,
         Field(description="Last update date"),
     ]
 
@@ -91,9 +92,10 @@ class ShortUrlResponse(BaseModel):
         str,
         Field(..., description="Long URL for this short URL"),
     ]
-    user_id: Annotated[
-        UUID | None,
-        Field(default=None, description="Owner UUID for this short URL")
-    ]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ShortUrlListPage(BaseModel):
+    items: list[ShortUrl]
+    meta: PaginationMeta
