@@ -19,7 +19,7 @@ from src.schemas.short_url import (
 
 router = APIRouter(
     prefix="/short_url",
-    tags=["short_url"],
+    tags=["short-urls"],
 )
 
 
@@ -27,6 +27,8 @@ router = APIRouter(
     "/",
     status_code=status.HTTP_201_CREATED,
     response_model=ShortUrlResponse,
+    summary="Create short URL",
+    description="Random slug if omitted; custom `slug` if provided. Authenticated users get `user_id` set.",
 )
 @inject
 async def create_short_url(

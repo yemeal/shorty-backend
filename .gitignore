@@ -170,6 +170,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Local-only notes (not committed)
+/docs/
+
 # PyBuilder
 .pybuilder/
 target/
