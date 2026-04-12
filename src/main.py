@@ -11,9 +11,10 @@ from starlette import status
 from src.core.exceptions import LongUrlNotFoundException
 from src.core.http_exceptions import HTTPErrors
 from src.core.config import TRUSTED_ORIGINS
+from src.core.openapi import API_DESCRIPTION, API_TITLE, OPENAPI_TAGS
 from src.utils.protocols import UrlServiceProtocol
 from src.database.provider import DatabaseProvider, ServicesProvider, UserProvider
-from src.routers import short_url_router, auth_router
+from src.routers import short_url_router, auth_router, user_router
 from src.middleware.origin_check import OriginCheckMiddleware
 
 
@@ -25,7 +26,13 @@ async def lifespan(_app: FastAPI):
     await _app.state.dishka_container.close()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version="0.1.0",
+    openapi_tags=OPENAPI_TAGS,
+    lifespan=lifespan,
+)
 
 #CSRF
 app.add_middleware(
@@ -44,6 +51,7 @@ app.add_middleware(
 
 app.include_router(short_url_router)
 app.include_router(auth_router)
+app.include_router(user_router)
 
 container = make_async_container(
     DatabaseProvider(),
@@ -54,17 +62,16 @@ container = make_async_container(
 setup_dishka(container, app)
 
 
-@app.get("/me")
-@inject
-async def me():
-    # TODO return curr user profile
-    pass
-
-
-@app.get("/{slug}")
+@app.get(
+    "/{slug}",
+    tags=["redirect"],
+    summary="Follow short link",
+    description="302 redirect to the stored long URL. Reserved slugs may conflict with other routes.",
+    responses={302: {"description": "Redirect to target URL"}},
+)
 @inject
 async def root(
-    slug: Annotated[str, Path(...)],
+    slug: Annotated[str, Path(description="Short slug")],
     url_service: FromDishka[UrlServiceProtocol],
 ):
     try:

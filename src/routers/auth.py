@@ -59,6 +59,8 @@ def _set_tokens_cookies(
     "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=AuthCookieResponse,
+    summary="Register",
+    description="Create user and set access + refresh cookies.",
 )
 @inject
 async def register(
@@ -93,6 +95,8 @@ async def register(
 @router.post(
     "/login",
     response_model=AuthCookieResponse,
+    summary="Login",
+    description="OAuth2 form: `username` = email, `password`. Sets token cookies.",
 )
 @inject
 async def login(
@@ -121,8 +125,10 @@ async def login(
 
 
 @router.post(
-    "/refresh", 
-    response_model=OkResponse
+    "/refresh",
+    response_model=OkResponse,
+    summary="Refresh tokens",
+    description="Reads `refresh_token` cookie; rotates tokens.",
 )
 @inject
 async def refresh(
@@ -153,8 +159,10 @@ async def refresh(
 
 
 @router.post(
-    "/logout", 
-    response_model=OkResponse
+    "/logout",
+    response_model=OkResponse,
+    summary="Logout",
+    description="Clears access and refresh cookies (client-side session end).",
 )
 @inject
 async def logout(
