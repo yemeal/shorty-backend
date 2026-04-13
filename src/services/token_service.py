@@ -9,12 +9,7 @@ from src.core.config import (
     SECRET_KEY,
     ALGORITHM,
 )
-from src.core.exceptions import (
-    InvalidTokenTypeException,
-    TokenExpiredException,
-    TokenNoSubException,
-    TokenException,
-)
+from src.core.exceptions import DomainErrors
 from src.models import User
 
 
@@ -23,7 +18,10 @@ class JWTTokenService:
 
     def _check_token_type(self, token_type: str) -> None:
         if token_type not in self._ALLOWED_TOKEN_TYPES:
-            raise InvalidTokenTypeException()
+            raise DomainErrors.Token.INVALID_TYPE(
+                expected="access|refresh",
+                actual=token_type,
+            )
 
     def create_token(self, data: dict, token_type: str):
         self._check_token_type(token_type)
@@ -61,13 +59,16 @@ class JWTTokenService:
                 algorithms=[ALGORITHM],
             )
             if payload.get("sub") is None:
-                raise TokenNoSubException()
+                raise DomainErrors.Token.SUBJECT_MISSING()
             if payload.get("token_type") != token_type:
-                raise InvalidTokenTypeException()
-        except jwt.ExpiredSignatureError:
-            raise TokenExpiredException()
-        except jwt.PyJWTError:
-            raise TokenException()
+                raise DomainErrors.Token.INVALID_TYPE(
+                    expected=token_type,
+                    actual=str(payload.get("token_type")),
+                )
+        except jwt.ExpiredSignatureError as e:
+            raise DomainErrors.Token.EXPIRED(cause=e) from e
+        except jwt.PyJWTError as e:
+            raise DomainErrors.Token.MALFORMED(cause=e) from e
 
         return payload
 

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 
 from src.core.config import DATABASE_URL
 from src.core.password_hasher import PasslibPasswordHasher
-from src.core.http_exceptions import HTTPErrors
+from src.core.exceptions import DomainErrors, HTTPErrors
 from src.models import ShortUrl, User
 from src.services.auth_service import AuthService
 from src.services.token_service import JWTTokenService
@@ -30,13 +30,6 @@ from src.utils import (
     UserShortUrlQueryPort,
 )
 from src.utils import SQLAlchemyAsyncRepository, AbstractAsyncRepository
-from src.core.exceptions import (
-    TokenNoSubException, 
-    UserWithIdNotFoundException, 
-    TokenException,
-    TokenExpiredException,
-    InvalidTokenTypeException,
-)
 
 
 class DatabaseProvider(Provider):
@@ -90,18 +83,18 @@ class UserProvider(Provider):
             )
             sub = payload.get("sub")
             user_id = UUID(str(sub))
-        except TokenNoSubException:
-            raise HTTPErrors.Auth.TOKEN_SUBJECT_MISSING()
-        except InvalidTokenTypeException:
-            raise HTTPErrors.Auth.INVALID_TOKEN_TYPE()
-        except TokenExpiredException:
+        except DomainErrors.Token.ExpiredError:
             raise HTTPErrors.Auth.TOKEN_EXPIRED()
-        except TokenException:
+        except DomainErrors.Token.MissingSubjectError:
+            raise HTTPErrors.Auth.TOKEN_SUBJECT_MISSING()
+        except DomainErrors.Token.InvalidTypeError:
+            raise HTTPErrors.Auth.INVALID_TOKEN_TYPE()
+        except DomainErrors.Token.Error:
             raise HTTPErrors.Auth.COULD_NOT_VALIDATE_CREDENTIALS()
 
         try:
             return await user_service.get_user_by_id(user_id)
-        except UserWithIdNotFoundException:
+        except DomainErrors.User.NotFoundByIdError:
             raise HTTPErrors.Auth.USER_NOT_FOUND()
         except Exception:
             raise HTTPErrors.Server.INTERNAL_ERROR()
@@ -187,11 +180,13 @@ class ServicesProvider(Provider):
         self,
         uow: AbstractAsyncUOW,
         repo: AbstractAsyncRepository[User],
+        short_url_repo: AbstractAsyncRepository[ShortUrl],
         user_short_url_query: UserShortUrlQueryPort,
     ) -> UserServiceProtocol:
         return UserService(
             uow=uow,
             repo=repo,
+            short_url_repo=short_url_repo,
             user_short_url_query=user_short_url_query,
         )
 

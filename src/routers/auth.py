@@ -9,14 +9,7 @@ from src.schemas.tokens import RefreshTokenRequest, TokensResponse
 from src.schemas.user import UserCreate
 from src.schemas.auth import AuthCookieResponse, OkResponse
 from src.utils.protocols import AuthServiceProtocol
-from src.core.exceptions import (
-    UserWithEmailExistsException,
-    UserWithUsernameExistsException,
-    IncorrectEmailOrPasswordException,
-    UserNotFoundException,
-)
-from src.core.exceptions import TokenException, TokenExpiredException
-from src.core.http_exceptions import HTTPErrors
+from src.core.exceptions import DomainErrors, HTTPErrors
 from src.core.config import COOKIE_DOMAIN, COOKIE_SAMESITE, COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 router = APIRouter(
@@ -30,24 +23,24 @@ def _set_tokens_cookies(
     access_token: str,
     refresh_token: str,
 ) -> None:
-    # access cookie 
+    # access cookie
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=COOKIE_SECURE,       
+        secure=COOKIE_SECURE,
         samesite=COOKIE_SAMESITE,
         domain=COOKIE_DOMAIN,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
 
-    # refresh cookie 
+    # refresh cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=COOKIE_SECURE,       
+        secure=COOKIE_SECURE,
         samesite=COOKIE_SAMESITE,
         domain=COOKIE_DOMAIN,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
@@ -74,9 +67,9 @@ async def register(
             str(payload.email),
             str(payload.password),
         )
-    except UserWithEmailExistsException:
+    except DomainErrors.User.EmailAlreadyExistsError:
         raise HTTPErrors.User.EMAIL_EXISTS()
-    except UserWithUsernameExistsException:
+    except DomainErrors.User.UsernameAlreadyExistsError:
         raise HTTPErrors.User.USERNAME_EXISTS()
 
     _set_tokens_cookies(
@@ -110,7 +103,7 @@ async def login(
             str(form_data.username),
             str(form_data.password),
         )
-    except IncorrectEmailOrPasswordException:
+    except DomainErrors.Auth.IncorrectCredentialsError:
         raise HTTPErrors.Auth.INCORRECT_EMAIL_OR_PASSWORD()
 
     _set_tokens_cookies(
@@ -142,11 +135,11 @@ async def refresh(
 
     try:
         tokens = await auth_service.refresh(refresh_token)
-    except TokenExpiredException:
+    except DomainErrors.Token.ExpiredError:
         raise HTTPErrors.Auth.TOKEN_EXPIRED()
-    except TokenException:
+    except DomainErrors.Token.Error:
         raise HTTPErrors.Auth.COULD_NOT_VALIDATE_CREDENTIALS()
-    except UserNotFoundException:
+    except DomainErrors.User.NotFoundByIdError:
         raise HTTPErrors.Auth.USER_NOT_FOUND()
 
     _set_tokens_cookies(
@@ -170,7 +163,7 @@ async def logout(
 ):
     # TODO Invalidate refresh from db
     response.delete_cookie(
-        "access_token", 
+        "access_token",
         path="/",
     )
     response.delete_cookie(

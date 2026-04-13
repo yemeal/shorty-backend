@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Callable, Any
 
-from src.core.exceptions import RetriesAmountExceeded
+from src.core.exceptions import DomainErrors
 
 # TODO сделать RetriableMixin
 
@@ -18,6 +18,10 @@ def retry_instancemethod(method: Callable) -> Callable:
                 # TODO Добавить логирование сюды
                 pass
 
-        raise RetriesAmountExceeded(exception)
+        raise DomainErrors.Retry.BUDGET_EXCEEDED(
+            operation=method.__name__,
+            attempts=_instance.max_retries,
+            last_error=exception,
+        )
 
     return wrapper

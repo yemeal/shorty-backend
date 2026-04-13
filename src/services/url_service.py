@@ -1,8 +1,4 @@
-from src.core.exceptions import (
-    ShortUrlGenerationException,
-    LongUrlNotFoundException,
-    SlugAlreadyExistsException,
-)
+from src.core.exceptions import DomainErrors
 from src.models import ShortUrl, User
 from src.utils import (
     generate_random_slug,
@@ -15,8 +11,8 @@ from src.utils import (
 # TODO Сделать домены, не зависящие от реализации, чтобы можно было подкидывать их как аннотации
 
 
-def find_by_slug(slug: str) -> Specification[ShortUrl]:
-    return Specification[ShortUrl](
+def find_by_slug(slug: str) -> Specification:
+    return Specification(
         ShortUrl.slug == slug, ShortUrl.is_active == True
     )
 
@@ -54,8 +50,13 @@ class UrlService:
         try:
             async with self._uow:
                 return await self._repo.add(short_url)
+        except DomainErrors.Persistence.IntegrityViolationError:
+            raise
         except Exception as e:
-            raise ShortUrlGenerationException(e)
+            raise DomainErrors.ShortUrl.GENERATION_FAILED(
+                slug=slug,
+                cause=e,
+            ) from e
 
     @retry_instancemethod
     async def create_random_short_url(
@@ -85,10 +86,11 @@ class UrlService:
         """
         try:
             return await self._save_to_db(url, slug, user)
-        except ShortUrlGenerationException:
-            raise SlugAlreadyExistsException(
-                f"Slug '{slug}' is already in use."
-            )
+        except DomainErrors.Persistence.IntegrityViolationError:
+            raise DomainErrors.ShortUrl.SLUG_TAKEN(
+                slug=slug,
+                message=f"Slug '{slug}' is already in use.",
+            ) from None
 
     async def get_original_url(self, slug: str) -> ShortUrl:
         """
@@ -101,7 +103,7 @@ class UrlService:
             short_url = await self._repo.find_one(find_by_slug(slug))
 
             if not short_url:
-                raise LongUrlNotFoundException()
+                raise DomainErrors.ShortUrl.BY_SLUG_NOT_FOUND(slug=slug)
 
             short_url.usage_count += 1
 
