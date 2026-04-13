@@ -1,12 +1,6 @@
-from src.core.exceptions import (
-    UserWithEmailExistsException,
-    UserWithUsernameExistsException,
-    UserWithEmailNotFoundException,
-    IncorrectEmailOrPasswordException,
-    TokenException,
-    UserWithIdNotFoundException,
-    TokenExpiredException,
-)
+from uuid import UUID
+
+from src.core.exceptions import DomainErrors
 from src.schemas import AuthResponse, UserResponse
 from src.utils import (
     AbstractAsyncRepository,
@@ -48,7 +42,6 @@ class AuthService:
             "token_type": "Bearer",
         }
 
-
     async def register(
         self,
         username: str,
@@ -69,9 +62,9 @@ class AuthService:
 
         try:
             new_user = await self._user_service.add_new_user(new_user)
-        except UserWithEmailExistsException:
+        except DomainErrors.User.EmailAlreadyExistsError:
             raise
-        except UserWithUsernameExistsException:
+        except DomainErrors.User.UsernameAlreadyExistsError:
             raise
 
         tokens = self._create_refresh_and_access_tokens(new_user)
@@ -81,7 +74,6 @@ class AuthService:
             "tokens": tokens,
         }
 
-
     async def login(
         self,
         email: str,
@@ -90,13 +82,13 @@ class AuthService:
         try:
             user = await self._user_service.get_user_by_email(email)
             if not self._password_hasher.verify(
-                password, 
+                password,
                 user.hashed_password,
             ):
-                raise IncorrectEmailOrPasswordException()
-        except UserWithEmailNotFoundException:
-            raise IncorrectEmailOrPasswordException()
-        
+                raise DomainErrors.Auth.INCORRECT_EMAIL_OR_PASSWORD()
+        except DomainErrors.User.NotFoundByEmailError:
+            raise DomainErrors.Auth.INCORRECT_EMAIL_OR_PASSWORD() from None
+
         tokens = self._create_refresh_and_access_tokens(user)
 
         return {
@@ -112,19 +104,19 @@ class AuthService:
             payload = self._token_service.decode_token(
                 refresh_token, token_type="refresh"
             )
-            _id = payload.get("sub")
-            user = await self._user_service.get_user_by_id(_id)
+            sub = payload.get("sub")
+            user = await self._user_service.get_user_by_id(UUID(str(sub)))
             access_token = self._token_service.issue_token(
                 user, token_type="access"
             )
             new_refresh_token = self._token_service.issue_token(
                 user, token_type="refresh"
             )
-        except TokenExpiredException:
+        except DomainErrors.Token.ExpiredError:
             raise
-        except TokenException:
+        except DomainErrors.Token.Error:
             raise
-        except UserWithIdNotFoundException:
+        except DomainErrors.User.NotFoundByIdError:
             raise
 
         return {

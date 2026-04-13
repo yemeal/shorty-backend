@@ -11,6 +11,7 @@ Preferred call style (single entrypoint):
 - `raise HTTPErrors.Auth.NOT_AUTHENTICATED()`
 - `raise HTTPErrors.User.EMAIL_EXISTS()` — registration conflicts
 - `raise HTTPErrors.ShortUrl.SLUG_ALREADY_EXISTS()` — short URL errors
+- `raise HTTPErrors.ShortUrl.SHORT_URL_NOT_FOUND()` — owned short URL missing
 - `raise HTTPErrors.Server.INTERNAL_ERROR()`, `HTTPErrors.Request.VALIDATION_ERROR()`, `HTTPErrors.RateLimit.TOO_MANY_REQUESTS()`
 
 `HTTPErrors` groups nested error classes (`Auth`, `User`, `ShortUrl`, …).
@@ -30,6 +31,7 @@ Factories overview (status / message / when to use):
 | USERNAME_EXISTS                 | 409    | User with this username already exists | Register conflict (unique username) |
 | SLUG_ALREADY_EXISTS             | 409    | This short url already exists.      | Short URL slug conflict |
 | ORIGINAL_URL_NOT_FOUND          | 404    | Original URL not found              | Redirect slug not found |
+| SHORT_URL_NOT_FOUND             | 404    | Short URL not found                 | Authenticated delete/list row missing for owner |
 | RETRIES_AMOUNT_EXCEEDED         | 500    | We had problem generating short url, try again later. | Retry budget exceeded |
 | INTERNAL_ERROR                  | 500    | Internal server error               | Unexpected server-side failure |
 | FORBIDDEN                       | 403    | Forbidden                           | Authenticated but not allowed (RBAC/ownership) |
@@ -42,6 +44,9 @@ Note:
 Error codes:
 - Each error has a stable `ApiErrorCode` in `detail`: `{ "code": <str>, "message": <str> }`.
 - Frontend: match on `detail.code`, not on `message` alone.
+
+TODO: consider stable internal `DomainErrorCode` parallel to `ApiErrorCode` for logs/metrics
+(see package docstring in `domain.py`).
 """
 
 from enum import Enum
@@ -69,6 +74,7 @@ class ApiErrorCode(str, Enum):
 
     SLUG_ALREADY_EXISTS = "short_url/slug_already_exists"
     ORIGINAL_URL_NOT_FOUND = "short_url/original_url_not_found"
+    SHORT_URL_NOT_FOUND = "short_url/short_url_not_found"
     RETRIES_AMOUNT_EXCEEDED = "short_url/retries_amount_exceeded"
 
     INTERNAL_SERVER_ERROR = "server/internal_server_error"
@@ -217,6 +223,17 @@ class ShortUrl:
             detail=_detail(
                 ApiErrorCode.ORIGINAL_URL_NOT_FOUND,
                 "Original URL not found",
+            ),
+        )
+
+    @staticmethod
+    def SHORT_URL_NOT_FOUND() -> HTTPException:
+        """404: short URL row missing for the current user (e.g. delete by id)."""
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=_detail(
+                ApiErrorCode.SHORT_URL_NOT_FOUND,
+                "Short URL not found",
             ),
         )
 

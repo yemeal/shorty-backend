@@ -2,14 +2,10 @@ from typing import Annotated
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body
 from starlette import status
 
-from src.core.exceptions import (
-    RetriesAmountExceeded,
-    SlugAlreadyExistsException,
-)
-from src.core.http_exceptions import HTTPErrors
+from src.core.exceptions import DomainErrors, HTTPErrors
 from src.utils.protocols import UrlServiceProtocol
 from src.models import User as UserModel
 from src.schemas.short_url import (
@@ -48,9 +44,9 @@ async def create_short_url(
             short_url = await url_service.create_random_short_url(
                 str(payload.long_url), current_user
             )
-    except SlugAlreadyExistsException:
+    except DomainErrors.ShortUrl.SlugConflictError:
         raise HTTPErrors.ShortUrl.SLUG_ALREADY_EXISTS()
-    except RetriesAmountExceeded:
+    except DomainErrors.Retry.BudgetExceededError:
         raise HTTPErrors.ShortUrl.RETRIES_AMOUNT_EXCEEDED()
 
     return short_url

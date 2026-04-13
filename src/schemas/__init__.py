@@ -1,7 +1,7 @@
 from .user import UserResponse, UserUpdate, UserCreate
 from .short_url import ShortUrl, ShortUrlCreate, ShortUrlResponse
 from .tokens import RefreshTokenRequest, TokensResponse
-from .auth import AuthResponse
+from .auth import AuthResponse, OkResponse
 
 __all__ = (
     "UserResponse",
@@ -13,4 +13,5 @@ __all__ = (
     "RefreshTokenRequest",
     "TokensResponse",
     "AuthResponse",
+    "OkResponse",
 )

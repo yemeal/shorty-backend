@@ -5,7 +5,7 @@ from uuid import UUID
 import re
 
 from src.core.config import RESERVED_SLUGS
-from src.core.exceptions import SlugAlreadyExistsException
+from src.core.exceptions import DomainErrors
 from src.schemas.pagination_meta import PaginationMeta
 
 
@@ -35,8 +35,9 @@ class ShortUrlCreate(BaseModel):
         value = value.strip()
 
         if value.lower() in RESERVED_SLUGS:
-            raise SlugAlreadyExistsException(
-                f"Slug '{value}' is reserved by system"
+            raise DomainErrors.ShortUrl.SLUG_RESERVED(
+                slug=value,
+                note="matches RESERVED_SLUGS",
             )
 
         if not re.search(r"[a-zA-Zа-яА-ЯёЁ0-9]", value):

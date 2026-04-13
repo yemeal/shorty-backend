@@ -1,12 +1,13 @@
-from abc import ABC, abstractmethod
-from typing import Sequence
+from __future__ import annotations
 
-from sqlalchemy import select
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from uuid import UUID
 
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
-from src.core.exceptions import CreatingException
+from src.core.exceptions import DomainErrors
 from src.utils.protocols.session import AsyncSessionProtocol
 from src.utils.specification import Specification
 
@@ -25,18 +26,27 @@ class AbstractAsyncRepository[ModelType](ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete(self, entity: ModelType) -> ModelType | None:
+    async def delete(
+        self,
+        *,
+        specification: Specification,
+    ) -> Sequence[ModelType]:
+        """
+        Delete all rows matching ``specification`` (must include predicates — see :class:`Specification`).
+
+        Returns deleted ORM instances (e.g. via ``DELETE … RETURNING``). Empty sequence if nothing matched.
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def find(
-        self, specification: Specification[ModelType]
+        self, specification: Specification
     ) -> Sequence[ModelType] | None:
         raise NotImplementedError
 
     @abstractmethod
     async def find_one(
-        self, specification: Specification[ModelType]
+        self, specification: Specification
     ) -> ModelType | None:
         raise NotImplementedError
 
@@ -55,8 +65,12 @@ class SQLAlchemyAsyncRepository[ModelType](
             self.session.add(entity)
             await self.session.flush()
             return entity
-        except IntegrityError:
-            raise CreatingException()
+        except IntegrityError as e:
+            raise DomainErrors.Persistence.INTEGRITY_VIOLATION(
+                operation="insert",
+                model=self.model_class.__name__,
+                cause=e,
+            ) from e
 
     async def get(self, entity_id: UUID) -> ModelType | None:
         return await self.session.get(self.model_class, entity_id)
@@ -66,12 +80,19 @@ class SQLAlchemyAsyncRepository[ModelType](
         await self.session.flush()
         return merged_entity
 
-    async def delete(self, entity: ModelType) -> ModelType | None:
-        await self.session.delete(entity)
-        return entity
+    async def delete(
+        self,
+        *,
+        specification: Specification,
+    ) -> Sequence[ModelType]:
+        stmt = delete(self.model_class)
+        stmt = specification.apply(stmt)
+        stmt = stmt.returning(self.model_class)
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
 
     async def find(
-        self, specification: Specification[ModelType]
+        self, specification: Specification
     ) -> Sequence[ModelType] | None:
         stmt = select(self.model_class)
         stmt = specification.apply(stmt)
@@ -80,7 +101,7 @@ class SQLAlchemyAsyncRepository[ModelType](
         return result.scalars().all()
 
     async def find_one(
-        self, specification: Specification[ModelType]
+        self, specification: Specification
     ) -> ModelType | None:
         stmt = select(self.model_class)
         stmt = specification.apply(stmt)

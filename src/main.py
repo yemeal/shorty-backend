@@ -8,8 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from starlette import status
 
-from src.core.exceptions import LongUrlNotFoundException
-from src.core.http_exceptions import HTTPErrors
+from src.core.exceptions import DomainErrors, HTTPErrors
 from src.core.config import TRUSTED_ORIGINS
 from src.core.openapi import API_DESCRIPTION, API_TITLE, OPENAPI_TAGS
 from src.utils.protocols import UrlServiceProtocol
@@ -76,7 +75,7 @@ async def root(
 ):
     try:
         long_url = (await url_service.get_original_url(slug)).long_url
-    except LongUrlNotFoundException:
+    except DomainErrors.ShortUrl.BySlugNotFoundError:
         raise HTTPErrors.ShortUrl.ORIGINAL_URL_NOT_FOUND()
 
     return RedirectResponse(
