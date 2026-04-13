@@ -113,7 +113,7 @@ TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "TRUSTED_ORIGINS",
-        "http://localhost:5173,http://localhost:8000,https://шорти.рф,https://xn--h1algi1a.xn--p1ai",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,https://шорти.рф,https://xn--h1algi1a.xn--p1ai",
     ).split(",")
     if origin.strip()
 ]
