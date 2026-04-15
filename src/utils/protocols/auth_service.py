@@ -1,16 +1,15 @@
 from typing import Protocol
 from src.models.user import User
+from src.schemas.user import UserCreate
 
 
 class AuthServiceProtocol(Protocol):
     async def register(
         self,
-        username: str,
-        email: str,
-        password: str,
-    ) -> dict[str, User | dict[str, str]]:
+        user_create: UserCreate,
+    ) -> dict[str, User]:
         """
-        returns: dict("user": <user>, "tokens": <tokens (access and refresh)>)
+        returns: dict("user": <user>)
         """
         ...
 
@@ -18,9 +17,9 @@ class AuthServiceProtocol(Protocol):
         self,
         email: str,
         password: str,
-    ) -> dict[str, User | dict[str, str]]:
+    ) -> dict[str, User]:
         """
-        returns: dict("user": <user>, "tokens": <tokens (access and refresh)>)
+        returns: dict("user": <user>)
         """
         ...
 

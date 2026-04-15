@@ -7,7 +7,7 @@ class RefreshTokenRequest(BaseModel):
         str,
         Field(
             ...,
-            description="Refresh token",
+            description="Refresh JWT in the body (cookie flow may not use this)",
         ),
     ]
 
@@ -17,7 +17,7 @@ class TokensResponse(BaseModel):
         str,
         Field(
             ...,
-            description="Access token",
+            description="Short-lived access JWT",
         ),
     ]
 
@@ -25,7 +25,7 @@ class TokensResponse(BaseModel):
         str,
         Field(
             ...,
-            description="Refresh token",
+            description="Long-lived refresh JWT",
         ),
     ]
 
@@ -33,6 +33,6 @@ class TokensResponse(BaseModel):
         str,
         Field(
             default="Bearer",
-            description="Token type (default=Bearer)",
+            description="Always Bearer for these tokens",
         ),
     ]

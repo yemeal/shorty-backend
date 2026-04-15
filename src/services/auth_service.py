@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from src.core.exceptions import DomainErrors
-from src.schemas import AuthResponse, UserResponse
+from src.schemas import AuthResponse, UserResponse, UserCreate
 from src.utils import (
     AbstractAsyncRepository,
     AbstractAsyncUOW,
@@ -9,7 +9,7 @@ from src.utils import (
     UserServiceProtocol,
 )
 from src.utils.protocols import PasswordHasherProtocol
-from src.models import User
+from src.models import User, UserProfile
 
 # TODO invalidate old refresh-token when you refresh tokens
 
@@ -44,24 +44,26 @@ class AuthService:
 
     async def register(
         self,
-        username: str,
-        email: str,
-        password: str,
+       user_create: UserCreate,
     ) -> dict[str, User | dict[str, str]]:
         """
         1. Uniqueness check
         2. Password hashing
         3. Saving
         """
-        hashed_password = self._password_hasher.hash(password)
+        hashed_password = self._password_hasher.hash(user_create.password)
         new_user = User(
-            username=username,
-            email=email,
+            username=user_create.username,
+            email=user_create.email,
             hashed_password=hashed_password,
+        )
+        user_profile = UserProfile(
+            emoji_avatar=user_create.emoji_avatar,
+            timezone=user_create.timezone,
         )
 
         try:
-            new_user = await self._user_service.add_new_user(new_user)
+            new_user = await self._user_service.add_new_user(new_user, user_profile)
         except DomainErrors.User.EmailAlreadyExistsError:
             raise
         except DomainErrors.User.UsernameAlreadyExistsError:
