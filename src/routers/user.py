@@ -1,18 +1,20 @@
 """
-User-scoped routes (/me).
+Routes under /me (current user only).
 """
 from uuid import UUID
 from typing import Annotated
 
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Body, HTTPException
 from starlette import status
 
 from src.models import User as UserModel
+from src.services.user_profile_service import UserProfileService
 from src.schemas.pagination_meta import PaginationParams
 from src.schemas.short_url import ShortUrl, ShortUrlListPage
 from src.schemas.user import UserResponse
+from src.schemas.user_profile import UserProfileUpdate, UserProfileResponse
 from src.schemas import OkResponse
 from src.utils.protocols import UserServiceProtocol
 from src.core.exceptions import DomainErrors, HTTPErrors
@@ -27,7 +29,7 @@ router = APIRouter(
     "/",
     response_model=UserResponse,
     summary="Current user",
-    description="Requires `access_token` cookie.",
+    description="Needs a valid `access_token` cookie.",
 )
 @inject
 async def get_me(
@@ -40,7 +42,7 @@ async def get_me(
     "/short_urls",
     response_model=ShortUrlListPage,
     summary="My short URLs",
-    description="Paginated list with optional `q` search and `sort_by` / `sort_order`.",
+    description="Paged list. Optional `q` searches slug and long URL. `sort_by` and `sort_order` control order.",
 )
 @inject
 async def get_short_urls(
@@ -63,7 +65,7 @@ async def get_short_urls(
     status_code=status.HTTP_200_OK,
     response_model=OkResponse,
     summary="Delete short URL",
-    description="Delete a short URL by its ID.",
+    description="Soft-deletes your short link by id (must belong to you).",
 )
 @inject
 async def delete_short_url(
@@ -79,3 +81,24 @@ async def delete_short_url(
         raise HTTPErrors.Server.INTERNAL_ERROR()
 
     return {"ok": True}
+
+
+@router.patch(
+    "/profile",
+    status_code=status.HTTP_200_OK,
+    response_model=UserProfileResponse,
+    summary="Update profile",
+    description="Update your profile.",
+)
+@inject
+async def update_profile(
+    user_profile_update: Annotated[UserProfileUpdate, Body()],
+    user_profile_service: FromDishka[UserProfileService],
+    current_user: FromDishka[UserModel],
+):
+    try:
+        return await user_profile_service.update_user_profile(
+            current_user.id, user_profile_update
+        )
+    except DomainErrors.UserProfile.NotFoundByUserIdError:
+        raise HTTPErrors.User.USER_PROFILE_NOT_FOUND()

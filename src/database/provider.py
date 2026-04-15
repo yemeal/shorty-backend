@@ -13,11 +13,12 @@ from sqlalchemy.ext.asyncio import (
 from src.core.config import DATABASE_URL
 from src.core.password_hasher import PasslibPasswordHasher
 from src.core.exceptions import DomainErrors, HTTPErrors
-from src.models import ShortUrl, User
+from src.models import ShortUrl, User, ShortUrlVisit, UserProfile
 from src.services.auth_service import AuthService
 from src.services.token_service import JWTTokenService
 from src.services.url_service import UrlService
 from src.services.user_service import UserService
+from src.services.user_profile_service import UserProfileService
 from src.utils.protocols import UrlServiceProtocol
 from src.database.user_short_url_query_adapter import SqlAlchemyUserShortUrlQuery
 from src.utils import (
@@ -169,6 +170,20 @@ class ServicesProvider(Provider):
         return SQLAlchemyAsyncRepository[User](session, User)  # type: ignore[arg-type]
 
     @provide(scope=Scope.REQUEST)
+    def provide_user_profile_repo(
+        self,
+        session: AsyncSession,
+    ) -> AbstractAsyncRepository[UserProfile]:
+        return SQLAlchemyAsyncRepository[UserProfile](session, UserProfile)  # type: ignore[arg-type]
+    
+    @provide(scope=Scope.REQUEST)
+    def provide_short_url_visit_repo(
+        self,
+        session: AsyncSession,
+    ) -> AbstractAsyncRepository[ShortUrlVisit]:
+        return SQLAlchemyAsyncRepository[ShortUrlVisit](session, ShortUrlVisit)  # type: ignore[arg-type]
+
+    @provide(scope=Scope.REQUEST)
     def provide_user_short_url_query(
         self,
         session: AsyncSession,
@@ -181,14 +196,24 @@ class ServicesProvider(Provider):
         uow: AbstractAsyncUOW,
         repo: AbstractAsyncRepository[User],
         short_url_repo: AbstractAsyncRepository[ShortUrl],
+        user_profile_repo: AbstractAsyncRepository[UserProfile],
         user_short_url_query: UserShortUrlQueryPort,
     ) -> UserServiceProtocol:
         return UserService(
             uow=uow,
             repo=repo,
             short_url_repo=short_url_repo,
+            user_profile_repo=user_profile_repo,
             user_short_url_query=user_short_url_query,
         )
+
+    @provide(scope=Scope.REQUEST)
+    def provide_user_profile_service(
+        self,
+        uow: AbstractAsyncUOW,
+        user_profile_repo: AbstractAsyncRepository[UserProfile],
+    ) -> UserProfileService:
+        return UserProfileService(uow=uow, repo=user_profile_repo)
 
     @provide(scope=Scope.REQUEST)
     def provide_auth_service(
