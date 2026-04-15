@@ -29,10 +29,12 @@ class User(Base, TimestampMixin, IsActiveMixin, UuidMixin):
     )
 
     short_urls: Mapped[list["ShortUrl"]] = relationship(
-        back_populates="owner"
+        back_populates="owner",
+        lazy="selectin",
     )
     profile: Mapped["UserProfile"] = relationship(
         back_populates="user", 
         uselist=False,
         cascade="all, delete-orphan",
+        lazy="joined",
     )
