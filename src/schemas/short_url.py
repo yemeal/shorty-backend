@@ -12,17 +12,17 @@ from src.schemas.pagination_meta import PaginationMeta
 class ShortUrlCreate(BaseModel):
     long_url: Annotated[
         AnyUrl,
-        Field(description="Long URL", max_length=20000),
+        Field(description="The real URL you want to shorten", max_length=20000),
     ]
     slug: Annotated[
         str | None,
         Field(
             default=None,
-            description="Custom slug for this long URL",
+            description="Optional custom slug (6-30 chars, letters/numbers/Cyrillic, _ and -). If you skip it, we pick a random slug.",
             min_length=6,
             max_length=30,
             pattern=r"^[a-zA-Zа-яА-ЯёЁ0-9_-]+$",
-            examples=["null", "my-blog", "мой-блог"],
+            examples=["my-blog", "мой-блог"],
         ),
     ]
 
@@ -51,34 +51,34 @@ class ShortUrlCreate(BaseModel):
 class ShortUrl(BaseModel):
     id: Annotated[
         UUID,
-        Field(description="Unique short url identifier"),
+        Field(description="Row id for this short link"),
     ]
 
     slug: Annotated[
         str,
-        Field(description="Short URL slug"),
+        Field(description="Short part in yoursite/{slug}"),
     ]
     long_url: Annotated[
         str,
-        Field(description="Long URL for this short URL"),
+        Field(description="Target URL after redirect"),
     ]
 
     created_at: Annotated[
         datetime,
-        Field(description="Creation date"),
+        Field(description="When the row was created"),
     ]
     updated_at: Annotated[
         datetime | None,
-        Field(description="Last update date"),
+        Field(description="Last change time, or null if never updated"),
     ]
 
     usage_count: Annotated[
         int,
-        Field(description="Total usage count"),
+        Field(description="How many times someone opened the short link"),
     ]
     is_active: Annotated[
         bool,
-        Field(description="Is this long url active? (soft-deleted)"),
+        Field(description="False if soft-deleted"),
     ]
 
     model_config = ConfigDict(from_attributes=True)
@@ -87,16 +87,18 @@ class ShortUrl(BaseModel):
 class ShortUrlResponse(BaseModel):
     slug: Annotated[
         str,
-        Field(..., description="Short URL slug"),
+        Field(..., description="Short slug"),
     ]
     long_url: Annotated[
         str,
-        Field(..., description="Long URL for this short URL"),
+        Field(..., description="Target URL"),
     ]
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ShortUrlListPage(BaseModel):
-    items: list[ShortUrl]
-    meta: PaginationMeta
+    """One page from GET /me/short_urls."""
+
+    items: Annotated[list[ShortUrl], Field(description="Short links on this page")]
+    meta: Annotated[PaginationMeta, Field(description="Pagination and sort info")]

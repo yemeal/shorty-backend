@@ -32,9 +32,9 @@ class AbstractAsyncRepository[ModelType](ABC):
         specification: Specification,
     ) -> Sequence[ModelType]:
         """
-        Delete all rows matching ``specification`` (must include predicates — see :class:`Specification`).
+        Delete all rows matching ``specification`` (must include predicates - see :class:`Specification`).
 
-        Returns deleted ORM instances (e.g. via ``DELETE … RETURNING``). Empty sequence if nothing matched.
+        Returns deleted ORM instances (e.g. via ``DELETE ... RETURNING``). Empty sequence if nothing matched.
         """
         raise NotImplementedError
 

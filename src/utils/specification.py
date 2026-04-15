@@ -10,7 +10,7 @@ from typing import Any, Protocol, Self
 
 
 class SupportsWhere(Protocol):
-    """SQLAlchemy statements that accept predicates via ``.where(...)`` (``Select``, ``Delete``, ``Update``, …)."""
+    """SQLAlchemy statements that accept ``.where(...)`` (``Select``, ``Delete``, ``Update``, etc.)."""
 
     def where(self, *clauses: Any) -> Self: ...
 

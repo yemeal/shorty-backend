@@ -1,19 +1,20 @@
 """
-SQLAlchemy implementation of UserShortUrlQueryPort.
+SQLAlchemy version of ``UserShortUrlQueryPort``.
 
+Rules:
+- Only rows for this owner, only active links.
+- Optional search: case-insensitive substring on slug or long URL (ILIKE).
+  The same filters drive both COUNT(*) and the page query.
+- Sort uses a fixed column list plus asc or desc, then ``id`` in the same
+  direction so ties on date or usage do not jump around.
 
-- Restrict every row to ShortUrl.user_id == owner_id and active records.
-- Optional case-insensitive substring match on slug or long_url (ILIKE), 
-same filters for COUNT(*) and the page query.
-- Sort by a whitelisted column + asc/desc, then by id in the same direction 
-so ordering is stable when created_at or usage_count ties.
+Not here: listing other users (different port). Heavier search can replace
+ILIKE inside this class later.
 
-- Cross-user or admin listing (different port / query).
-- Full-text or trigram search (can be swapped inside this adapter later).
-
-1. Add the value to ShortUrlSortBy in src.core.sort_options.
-2. Map it in _SORT_COLUMNS below. Do not accept arbitrary strings from the
-   client; only the Literal / OpenAPI enum values reach this layer.
+To add a new sort field:
+1. Put it in ``ShortUrlSortBy`` in ``src.core.sort_options``.
+2. Map it in ``_SORT_COLUMNS``. The API must only send enum values, not raw
+   strings from the client.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ _SORT_COLUMNS: dict[ShortUrlSortBy, ColumnElement] = {
 
 
 class SqlAlchemyUserShortUrlQuery(UserShortUrlQueryPort):
-    """Executes owner-scoped list + count using the request AsyncSession."""
+    """Runs the list and count queries on the request-scoped AsyncSession."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
