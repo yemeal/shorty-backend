@@ -29,6 +29,7 @@ from src.utils import (
     UserServiceProtocol,
     AuthServiceProtocol,
     UserShortUrlQueryPort,
+    UserProfileServiceProtocol,
 )
 from src.utils import SQLAlchemyAsyncRepository, AbstractAsyncRepository
 
@@ -211,9 +212,9 @@ class ServicesProvider(Provider):
     def provide_user_profile_service(
         self,
         uow: AbstractAsyncUOW,
-        user_profile_repo: AbstractAsyncRepository[UserProfile],
-    ) -> UserProfileService:
-        return UserProfileService(uow=uow, repo=user_profile_repo)
+        repo: AbstractAsyncRepository[UserProfile],
+    ) -> UserProfileServiceProtocol:
+        return UserProfileService(uow=uow, repo=repo)
 
     @provide(scope=Scope.REQUEST)
     def provide_auth_service(

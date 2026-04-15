@@ -10,13 +10,12 @@ from fastapi import APIRouter, Query, Body, HTTPException
 from starlette import status
 
 from src.models import User as UserModel
-from src.services.user_profile_service import UserProfileService
 from src.schemas.pagination_meta import PaginationParams
 from src.schemas.short_url import ShortUrl, ShortUrlListPage
 from src.schemas.user import UserResponse
 from src.schemas.user_profile import UserProfileUpdate, UserProfileResponse
 from src.schemas import OkResponse
-from src.utils.protocols import UserServiceProtocol
+from src.utils.protocols import UserServiceProtocol, UserProfileServiceProtocol
 from src.core.exceptions import DomainErrors, HTTPErrors
 
 router = APIRouter(
@@ -93,7 +92,7 @@ async def delete_short_url(
 @inject
 async def update_profile(
     user_profile_update: Annotated[UserProfileUpdate, Body()],
-    user_profile_service: FromDishka[UserProfileService],
+    user_profile_service: FromDishka[UserProfileServiceProtocol],
     current_user: FromDishka[UserModel],
 ):
     try:
