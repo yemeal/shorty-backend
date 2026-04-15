@@ -4,13 +4,20 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 from uuid import UUID
 
+from src.schemas.user_profile import UserProfileResponse
+from src.utils.emoji_validator import SingleEmoji
+
 
 class UserCreate(BaseModel):
+    """
+    Body for POST /auth/register.
+    Only for sign-up; later you change profile with PATCH /me/profile or PATCH /me.
+    """
     username: Annotated[
         str,
         Field(
             ...,
-            description="Username (max 20 characters)",
+            description="Login name, up to 20 characters",
             max_length=20,
         ),
     ]
@@ -18,7 +25,7 @@ class UserCreate(BaseModel):
         str,
         Field(
             ...,
-            description="Password of the user (8-100 symbols)",
+            description="Password, 8 to 100 characters (we store a hash)",
             min_length=8,
             max_length=100,
         ),
@@ -27,8 +34,24 @@ class UserCreate(BaseModel):
         EmailStr,
         Field(
             ...,
-            description="Email address of the user (max 255 characters long)",
+            description="Email you log in with, up to 255 characters",
             max_length=255,
+        ),
+    ]
+    emoji_avatar: Annotated[
+        SingleEmoji,
+        Field(
+            default="⚡️",
+            max_length=50,
+            description="One emoji for the avatar (server checks it is really one emoji)",
+        ),
+    ]
+    timezone: Annotated[
+        str | None,
+        Field(
+            default=None,
+            max_length=50,
+            description="IANA zone from the client, for example Europe/Warsaw; null if you do not know",
         ),
     ]
 
@@ -36,18 +59,18 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: Annotated[
         UUID,
-        Field(..., description="Unique identifier of the user"),
+        Field(..., description="User id (UUID)"),
     ]
 
     username: Annotated[
         str,
-        Field(..., description="Username"),
+        Field(..., description="Login name"),
     ]
     email: Annotated[
         str | None,
         Field(
             default=None,
-            description="Email address of the user",
+            description="Email on file",
         ),
     ]
 
@@ -55,7 +78,22 @@ class UserResponse(BaseModel):
         bool,
         Field(
             ...,
-            description="Whether the user is active",
+            description="False if the account is disabled",
+        ),
+    ]
+    telegram_id: Annotated[
+        int | None,
+        Field(
+            default=None,
+            description="Telegram id if the account is linked",
+        ),
+    ]
+
+    profile: Annotated[
+        UserProfileResponse,
+        Field(
+            ...,
+            description="Profile row (emoji, theme, language, bio, timezone)",
         ),
     ]
 
@@ -63,4 +101,20 @@ class UserResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    pass
+    """Body for PATCH /me (only fields you want to change)."""
+    username: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="New login name, up to 20 characters",
+            max_length=20,
+        ),
+    ]
+    email: Annotated[
+        EmailStr | None,
+        Field(
+            default=None,
+            description="New email, up to 255 characters",
+            max_length=255,
+        ),
+    ]
