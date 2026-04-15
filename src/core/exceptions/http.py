@@ -3,20 +3,19 @@ from __future__ import annotations
 """
 Centralized HTTPException factories.
 
-Why:
-- Keep endpoint/business logic focused on intent, not repetitive HTTPException boilerplate.
-- Ensure consistent status codes and `detail` messages across the API.
+- Keeps route and service code short.
+- Same status codes and `detail` shape everywhere.
 
-Preferred call style (single entrypoint):
+How to raise:
 - `raise HTTPErrors.Auth.NOT_AUTHENTICATED()`
-- `raise HTTPErrors.User.EMAIL_EXISTS()` — registration conflicts
-- `raise HTTPErrors.ShortUrl.SLUG_ALREADY_EXISTS()` — short URL errors
-- `raise HTTPErrors.ShortUrl.SHORT_URL_NOT_FOUND()` — owned short URL missing
+- `raise HTTPErrors.User.EMAIL_EXISTS()` - email already taken at register
+- `raise HTTPErrors.ShortUrl.SLUG_ALREADY_EXISTS()` - slug collision
+- `raise HTTPErrors.ShortUrl.SHORT_URL_NOT_FOUND()` - no row for this user
 - `raise HTTPErrors.Server.INTERNAL_ERROR()`, `HTTPErrors.Request.VALIDATION_ERROR()`, `HTTPErrors.RateLimit.TOO_MANY_REQUESTS()`
 
-`HTTPErrors` groups nested error classes (`Auth`, `User`, `ShortUrl`, …).
+`HTTPErrors` groups classes: `Auth`, `User`, `ShortUrl`, and so on.
 
-Factories overview (status / message / when to use):
+Quick map (status / short message / when):
 
 | Method / function               | Status | message (human)                     | When to use |
 |---------------------------------|--------|-------------------------------------|-------------|
@@ -39,14 +38,14 @@ Factories overview (status / message / when to use):
 | TOO_MANY_REQUESTS               | 429    | Too many requests                   | Rate limiting / brute force mitigation |
 
 Note:
-- For cookie-auth flows, 401 responses include `WWW-Authenticate: Bearer` to match OAuth2 tooling.
+- For cookie auth, 401 responses send `WWW-Authenticate: Bearer` so OAuth2 tools stay happy.
 
-Error codes:
-- Each error has a stable `ApiErrorCode` in `detail`: `{ "code": <str>, "message": <str> }`.
-- Frontend: match on `detail.code`, not on `message` alone.
+Stable codes:
+- Each error puts an `ApiErrorCode` inside `detail`: `{ "code": <str>, "message": <str> }`.
+- In the client, read `detail.code`. Do not rely on `message` alone.
 
-TODO: consider stable internal `DomainErrorCode` parallel to `ApiErrorCode` for logs/metrics
-(see package docstring in `domain.py`).
+TODO: optional internal `DomainErrorCode` next to `ApiErrorCode` for logs or metrics
+(see `domain.py` package docstring).
 """
 
 from enum import Enum
@@ -56,9 +55,9 @@ from fastapi import HTTPException, status
 
 class ApiErrorCode(str, Enum):
     """
-    Stable, machine-readable error codes.
+    Stable string codes for clients.
 
-    Frontend tip: match on `detail.code` (not on human-readable messages).
+    In the UI, switch on ``detail.code``. Do not rely only on ``message``.
     """
 
     NOT_AUTHENTICATED = "auth/not_authenticated"
@@ -68,6 +67,7 @@ class ApiErrorCode(str, Enum):
     TOKEN_SUBJECT_MISSING = "auth/token_subject_missing"
     COULD_NOT_VALIDATE_CREDENTIALS = "auth/could_not_validate_credentials"
     USER_NOT_FOUND = "auth/user_not_found"
+    USER_PROFILE_NOT_FOUND = "user/profile_not_found"
 
     USER_WITH_EMAIL_EXISTS = "user/email_exists"
     USER_WITH_USERNAME_EXISTS = "user/username_exists"
@@ -200,6 +200,16 @@ class User:
             ),
         )
 
+    @staticmethod
+    def USER_PROFILE_NOT_FOUND() -> HTTPException:
+        """404: user profile not found."""
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=_detail(
+                ApiErrorCode.USER_PROFILE_NOT_FOUND,
+                "User profile not found",
+            ),
+        )
 
 class ShortUrl:
     """Short URL creation and redirect errors."""
@@ -293,7 +303,7 @@ class HTTPErrors:
     Namespace for HTTP error factories.
 
     Use `HTTPErrors.Auth.NOT_AUTHENTICATED()`, `HTTPErrors.User.EMAIL_EXISTS()`, etc.
-    Nested attributes are the same classes as module-level `Auth`, `User`, …
+    Nested attributes are the same classes as module-level `Auth`, `User`, and so on.
     """
 
     Auth = Auth
