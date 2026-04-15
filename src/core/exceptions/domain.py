@@ -1,39 +1,37 @@
 from __future__ import annotations
 
 """
-Domain-layer failures (never exposed to HTTP clients).
+Domain-layer failures (never sent to the HTTP client as-is).
 
-Why:
-- Services and infrastructure raise **domain** errors with rich, structured context for logs and debugging.
-- Routers and DI providers translate them to :class:`HTTPErrors` at the presentation boundary.
+- Services and infra raise these when something breaks in business rules or persistence.
+- Routers map them to :class:`HTTPErrors` before the response leaves the app.
 
-Preferred call style (mirror ``HTTPErrors`` where it helps mental mapping):
+Examples (same style as ``HTTPErrors`` where it helps):
 - ``raise DomainErrors.Auth.INCORRECT_EMAIL_OR_PASSWORD()``
 - ``raise DomainErrors.Token.EXPIRED(cause=exc)``
 - ``raise DomainErrors.User.NOT_FOUND_BY_ID(user_id=uid)``
 - ``raise DomainErrors.ShortUrl.SLUG_TAKEN(slug="foo")``
 - ``raise DomainErrors.Persistence.INTEGRITY_VIOLATION(operation="insert", model="User")``
 
-SRP grouping:
-- **Auth** — credential checks (login), not JWT mechanics.
-- **Token** — JWT decode/validate only (issuer, exp, claims).
-- **User** — user aggregate lookup and uniqueness conflicts.
-- **ShortUrl** — slug lifecycle, redirect target, persistence failures while saving URLs.
-- **Persistence** — generic repository/DB constraint signals (IntegrityError, etc.).
-- **Retry** — retry policy exhausted (caller supplies operation name).
-- **Authorization** — reserved for future RBAC / ownership rules (403 mapping).
+Groups:
+- **Auth** - login checks (wrong password, etc.), not low-level JWT code.
+- **Token** - read and check JWT (issuer, exp, claims).
+- **User** - find user, clashes on unique email/username.
+- **ShortUrl** - slug, redirect, saving a URL row.
+- **Persistence** - DB layer (e.g. IntegrityError).
+- **Retry** - a retry loop gave up (caller passes the operation name).
+- **Authorization** - reserved for later (403 / who may do what).
 
-Each concrete exception carries:
-- Human ``message`` (for logs; may repeat across instances).
-- ``context``: JSON-serializable-friendly dict (UUIDs as strings, exceptions summarized).
-- Optional ``note``: free-form developer hint (not for end users).
+Each error has:
+- ``message`` - text for humans and logs.
+- ``context`` - small dict safe enough for JSON logs (UUIDs as strings, nested errors shortened).
+- ``note`` (optional) - extra hint for developers, not for end users.
 
-Introspection:
-- ``exc.describe()`` — one line for structured logs.
-- ``exc.context`` — dict for JSON log fields.
+Helpers:
+- ``exc.describe()`` - one short line for logs.
+- ``exc.context`` - the dict above.
 
-TODO: Add optional ``DomainErrorCode`` enum (parallel to ``ApiErrorCode``) when you need stable
-internal codes for metrics/tracing — not required for API clients.
+TODO: optional ``DomainErrorCode`` enum next to ``ApiErrorCode`` for logging or tracing.
 """
 
 from typing import Any
@@ -60,7 +58,7 @@ class DomainError(Exception):
     """
     Base class for all domain failures.
 
-    **Never** return this type (or subclasses) in HTTP responses — map to ``HTTPErrors`` in routers.
+    **Never** send this (or subclasses) straight to the client. Map to ``HTTPErrors`` in routers.
     """
 
     default_message: str = "Domain error"
@@ -209,7 +207,7 @@ class ShortUrlBySlugNotFoundError(DomainError):
 
 
 class ShortUrlForOwnerNotFoundError(DomainError):
-    """No active short URL for (id, owner) — e.g. authenticated delete."""
+    """No active short URL for this id and owner (for example delete by id for the logged-in user)."""
 
     default_message = "Short URL not found for this user"
 
@@ -281,6 +279,32 @@ class SessionRefreshRevokedError(DomainError):
 
 
 # endregion
+
+# region User Profile
+
+
+class UserProfileLookupError(DomainError):
+    """Base: user profile not found for a concrete lookup key."""
+
+
+class UserProfileNotFoundByUserIdError(UserProfileLookupError):
+    """No profile row for this user id."""
+
+    default_message = "No user profile with this user id"
+
+
+# endregion
+
+
+class UserProfile:
+    """Profile row lookups (not found, etc.)."""
+
+    LookupError = UserProfileLookupError
+    NotFoundByUserIdError = UserProfileNotFoundByUserIdError
+
+    @staticmethod
+    def NOT_FOUND_BY_USER_ID(*, user_id: UUID, note: str | None = None) -> UserProfileNotFoundByUserIdError:
+        return UserProfileNotFoundByUserIdError(note=note, user_id=user_id)
 
 
 class Auth:
@@ -527,6 +551,7 @@ class DomainErrors:
     Auth = Auth
     Token = Token
     User = User
+    UserProfile = UserProfile
     ShortUrl = ShortUrl
     Persistence = Persistence
     Retry = Retry

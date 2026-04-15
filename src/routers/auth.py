@@ -53,7 +53,7 @@ def _set_tokens_cookies(
     status_code=status.HTTP_201_CREATED,
     response_model=AuthCookieResponse,
     summary="Register",
-    description="Create user and set access + refresh cookies.",
+    description="Creates the account and profile, then sets access and refresh cookies.",
 )
 @inject
 async def register(
@@ -62,11 +62,7 @@ async def register(
     auth_service: FromDishka[AuthServiceProtocol],
 ):
     try:
-        auth_response = await auth_service.register(
-            str(payload.username),
-            str(payload.email),
-            str(payload.password),
-        )
+        auth_response = await auth_service.register(payload)
     except DomainErrors.User.EmailAlreadyExistsError:
         raise HTTPErrors.User.EMAIL_EXISTS()
     except DomainErrors.User.UsernameAlreadyExistsError:
@@ -89,7 +85,7 @@ async def register(
     "/login",
     response_model=AuthCookieResponse,
     summary="Login",
-    description="OAuth2 form: `username` = email, `password`. Sets token cookies.",
+    description="Form body: `username` is your email, `password` is your password. Sets the same cookies as register.",
 )
 @inject
 async def login(
@@ -121,7 +117,7 @@ async def login(
     "/refresh",
     response_model=OkResponse,
     summary="Refresh tokens",
-    description="Reads `refresh_token` cookie; rotates tokens.",
+    description="Uses the `refresh_token` cookie and writes new access and refresh cookies.",
 )
 @inject
 async def refresh(
@@ -155,7 +151,7 @@ async def refresh(
     "/logout",
     response_model=OkResponse,
     summary="Logout",
-    description="Clears access and refresh cookies (client-side session end).",
+    description="Clears access and refresh cookies in the browser (server-side refresh list is not done yet).",
 )
 @inject
 async def logout(

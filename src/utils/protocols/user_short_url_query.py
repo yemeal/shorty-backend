@@ -1,10 +1,9 @@
 """
-Port: read current user's short URLs with pagination, text search, and sort.
+Port for listing one user's short URLs with page, search, and sort.
 
-This is intentionally narrow (not a generic repository): one use case,
-one method, so callers do not depend on SQLAlchemy or table layout.
+Small on purpose: one job, one method. Callers do not depend on SQLAlchemy.
 
-Implementations live in the infrastructure layer (e.g. SQLAlchemy adapter).
+Concrete class lives in the database layer (SQLAlchemy adapter).
 """
 
 from typing import Protocol, Sequence
@@ -15,7 +14,7 @@ from src.models import ShortUrl
 
 
 class UserShortUrlQueryPort(Protocol):
-    """Load paginated ShortUrl rows scoped to a single owner (user_id)."""
+    """Read ``ShortUrl`` rows for one owner (``user_id``) with paging."""
 
     async def list_for_owner(
         self,
@@ -27,10 +26,9 @@ class UserShortUrlQueryPort(Protocol):
         sort_order: SortOrder,
         search_query: str | None,
     ) -> tuple[Sequence[ShortUrl], int]:
-        """Return (items_on_this_page, total_matching_filters).
+        """Returns (rows for this page, total row count with the same filters).
 
-        ``total_matching_filters`` must use the same predicates as the list
-        query (owner, active flag, optional search), but without ``LIMIT`` /
-        ``OFFSET``. The application layer uses it for page metadata.
+        The count must match the list filters (owner, active, optional search)
+        and must not apply ``LIMIT`` / ``OFFSET``. Used to build page metadata.
         """
         ...

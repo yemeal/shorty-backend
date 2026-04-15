@@ -9,23 +9,24 @@ class AuthResponse(BaseModel):
         UserResponse,
         Field(
             ...,
-            description="User schema",
+            description="Logged-in user with profile",
         ),
     ]
     tokens: Annotated[
         TokensResponse,
         Field(
             ...,
-            description="Tokens (access+refresh) schema",
+            description="Access and refresh tokens in JSON (if you use this shape)",
         ),
     ]
+
 
 class AuthCookieResponse(BaseModel):
     user: Annotated[
         UserResponse,
         Field(
             ...,
-            description="User schema",
+            description="Logged-in user with profile (tokens are only in cookies, not here)",
         ),
     ]
 
@@ -35,6 +36,6 @@ class OkResponse(BaseModel):
         bool,
         Field(
             ...,
-            description="Operation status"    
-        )
+            description="True when the action finished without error",
+        ),
     ]

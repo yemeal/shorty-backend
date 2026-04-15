@@ -5,6 +5,7 @@ from .token_service import TokenServiceProtocol
 from .password_hasher import PasswordHasherProtocol
 from .user_service import UserServiceProtocol
 from .user_short_url_query import UserShortUrlQueryPort
+from .user_profile import UserProfileServiceProtocol    
 
 __all__ = (
     "UrlServiceProtocol",
@@ -15,4 +16,5 @@ __all__ = (
     "PasswordHasherProtocol",
     "UserServiceProtocol",
     "UserShortUrlQueryPort",
+    "UserProfileServiceProtocol",
 )

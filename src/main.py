@@ -65,12 +65,12 @@ setup_dishka(container, app)
     "/{slug}",
     tags=["redirect"],
     summary="Follow short link",
-    description="302 redirect to the stored long URL. Reserved slugs may conflict with other routes.",
-    responses={302: {"description": "Redirect to target URL"}},
+    description="302 to the saved long URL. Some slugs are reserved and may hit other routes first.",
+    responses={302: {"description": "Redirect to the long URL"}},
 )
 @inject
 async def root(
-    slug: Annotated[str, Path(description="Short slug")],
+    slug: Annotated[str, Path(description="The short code from the link")],
     url_service: FromDishka[UrlServiceProtocol],
 ):
     try:

@@ -1,7 +1,7 @@
 from typing import Protocol, Sequence
 from uuid import UUID
 
-from src.models import User, ShortUrl
+from src.models import User, ShortUrl, UserProfile  
 from src.schemas.pagination_meta import PaginationMeta, PaginationParams
 
 
@@ -14,7 +14,7 @@ class UserServiceProtocol(Protocol):
 
     async def check_username_exists(self, username: str) -> bool: ...
 
-    async def add_new_user(self, new_user: User) -> User: ...
+    async def add_new_user(self, new_user: User, user_profile: UserProfile) -> User: ...
 
     async def get_paginated_short_urls_by_user_id(
         self,

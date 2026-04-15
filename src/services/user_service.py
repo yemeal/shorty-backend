@@ -6,7 +6,7 @@ from src.core.exceptions import DomainErrors
 from src.utils import AbstractAsyncRepository, AbstractAsyncUOW
 from src.utils import Specification
 from src.utils.protocols.user_short_url_query import UserShortUrlQueryPort
-from src.models import User, ShortUrl
+from src.models import User, ShortUrl, UserProfile
 from src.schemas.pagination_meta import PaginationMeta, PaginationParams
 
 
@@ -40,42 +40,39 @@ def find_short_url_by_id_and_user_id(short_url_id: UUID, user_id: UUID) -> Speci
 
 
 class UserService:
-    """Application service for users; short-URL lists go through ``UserShortUrlQueryPort``."""
+    """User-related use cases. Paged short URL lists use ``UserShortUrlQueryPort``."""
 
     def __init__(
         self,
         uow: AbstractAsyncUOW,
         repo: AbstractAsyncRepository[User],
         short_url_repo: AbstractAsyncRepository[ShortUrl],
+        user_profile_repo: AbstractAsyncRepository[UserProfile],
         user_short_url_query: UserShortUrlQueryPort,
     ) -> None:
         self._uow = uow
         self._repo = repo
         self._short_url_repo = short_url_repo
+        self._user_profile_repo = user_profile_repo
         self._user_short_url_query = user_short_url_query
 
     async def get_user_by_email(self, email: str) -> User:
-        async with self._uow:
-            user = await self._repo.find_one(find_user_by_email(email))
-            if not user:
-                raise DomainErrors.User.NOT_FOUND_BY_EMAIL(email=email)
-            return user
+        user = await self._repo.find_one(find_user_by_email(email))
+        if not user:
+            raise DomainErrors.User.NOT_FOUND_BY_EMAIL(email=email)
+        return user
 
     async def get_user_by_id(self, user_id: UUID) -> User:
-        async with self._uow:
-            user = await self._repo.find_one(find_user_by_id(user_id))
-            if not user:
-                raise DomainErrors.User.NOT_FOUND_BY_ID(user_id=user_id)
-            return user
+        user = await self._repo.find_one(find_user_by_id(user_id))
+        if not user:
+            raise DomainErrors.User.NOT_FOUND_BY_ID(user_id=user_id)
+        return user
 
     async def get_user_by_username(self, username: str) -> User:
-        async with self._uow:
-            user = await self._repo.find_one(
-                find_user_by_username(username)
-            )
-            if not user:
-                raise DomainErrors.User.NOT_FOUND_BY_USERNAME(username=username)
-            return user
+        user = await self._repo.find_one(find_user_by_username(username))
+        if not user:
+            raise DomainErrors.User.NOT_FOUND_BY_USERNAME(username=username)
+        return user
 
     async def check_email_exists(self, email: str) -> bool:
         try:
@@ -91,18 +88,18 @@ class UserService:
             return False
         return True
 
-    async def add_new_user(self, new_user: User) -> User:
+    async def add_new_user(self, new_user: User, user_profile: UserProfile) -> User:
         try:
             async with self._uow:
                 user = await self._repo.add(new_user)
+                user_profile.user_id = user.id
+                await self._user_profile_repo.add(user_profile)
+                user.profile = user_profile
         except DomainErrors.Persistence.IntegrityViolationError:
             if await self.check_email_exists(new_user.email):
                 raise DomainErrors.User.EMAIL_ALREADY_EXISTS(email=new_user.email)
-
             if await self.check_username_exists(new_user.username):
                 raise DomainErrors.User.USERNAME_ALREADY_EXISTS(username=new_user.username)
-
-            raise
 
         return user
 
@@ -124,11 +121,10 @@ class UserService:
         *,
         pagination_params: PaginationParams,
     ) -> tuple[Sequence[ShortUrl], PaginationMeta]:
-        """Return one page of the user's short URLs and pagination metadata.
+        """One page of this user's short links plus pagination info.
 
-        Delegates filtering, sorting, and counting to :class:`UserShortUrlQueryPort`;
-        ``pagination_params`` is the single API/application input for page, size,
-        sort, and search.
+        All filters and sorting go through ``UserShortUrlQueryPort``. You pass
+        ``pagination_params`` for page, size, sort, and search text.
         """
         page = pagination_params.page
         page_size = pagination_params.page_size

@@ -24,7 +24,7 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
     response_model=ShortUrlResponse,
     summary="Create short URL",
-    description="Random slug if omitted; custom `slug` if provided. Authenticated users get `user_id` set.",
+    description="If you omit `slug`, we pick a random one. If you send `slug`, we try to use it. Logged-in users store the link on their account.",
 )
 @inject
 async def create_short_url(
