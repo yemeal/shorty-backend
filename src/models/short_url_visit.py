@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class ShortUrlVisit(Base, UuidMixin):
-    short_url_id: Mapped[UUID] = mapped_column(ForeignKey("short_urls.id"))
+    short_url_id: Mapped[UUID] = mapped_column(ForeignKey("short_urls.id"), index=True)
     
     ip_hash: Mapped[str] = mapped_column(String(255))
     
@@ -24,7 +24,6 @@ class ShortUrlVisit(Base, UuidMixin):
     referrer: Mapped[str | None] = mapped_column(String(255))
     referrer_domain: Mapped[str | None] = mapped_column(String(255))
     
-    is_unique: Mapped[bool] = mapped_column(default=False)
     visited_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     short_url: Mapped["ShortUrl"] = relationship(back_populates="visits")
