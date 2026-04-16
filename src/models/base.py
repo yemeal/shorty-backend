@@ -39,6 +39,7 @@ class TimestampMixin:
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         default=None,
+        onupdate=func.now(),
     )
 
 
